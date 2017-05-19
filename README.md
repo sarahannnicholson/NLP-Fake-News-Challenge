@@ -13,8 +13,8 @@ Stance detection is a method used to determine the quality of a news article by 
 With this system, for a set of news headlines, statistics can be gathered with respect to the stances. With these statistics, a user can come to their own conclusion of whether a new organisation has reputable news sources. To achieve these stances, this system will train on the data supplied by the fake news challenge. This data will provide the stance along with the headline and body to allow the system to learn which word combinations lead to which stance. For testing, data will be provided without the stances. To expand upon the baseline, this project will consider stemming words, removing stop words, and smoothing.
 
 
-(The remaining part of the Readme is from the [FNC baseline repo](https://github.com/FakeNewsChallenge/fnc-1-baseline) )
-# Baseline FNC implementation
+# This section of the Readme is from the [FNC baseline repo](https://github.com/FakeNewsChallenge/fnc-1-baseline)
+## Baseline FNC implementation
 
 Information about the fake news challenge can be found on [FakeChallenge.org](http://fakenewschallenge.org).
 
@@ -95,3 +95,35 @@ This will print a confusion matrix and a final score your classifier. We provide
 |  discuss      |    58         |     5         |   1527        |    210        |
 | unrelated     |     5         |     1         |    98         |   6794        |
 Score: 3538.0 out of 4448.5	(79.53%)
+
+
+
+# The remaining part of the Readme is from the [Fnc-1 repo](https://github.com/FakeNewsChallenge/fnc-1) 
+## Stance Detection dataset for FNC-1
+
+For details of the task, see [FakeNewsChallenge.org](http://fakenewschallenge.org)
+
+
+The data provided is `(headline, body, stance)` instances, where `stance` is one of `{unrelated, discuss, agree, disagree}`. The dataset is provided as two CSVs:
+
+
+### `train_bodies.csv`
+
+This file contains the body text of articles (the `articleBody` column) with corresponding IDs (`Body ID`)
+
+### `train_stances.csv`
+
+This file contains the labeled stances (the `Stance` column) for pairs of article headlines (`Headline`) and article bodies (`Body ID`, referring to entries in `train_bodies.csv`).
+
+### Distribution of the data
+
+The distribution of `Stance` classes in `train_stances.csv` is as follows:
+
+|   rows |   unrelated |   discuss |     agree |   disagree |
+|-------:|------------:|----------:|----------:|-----------:|
+|  49972 |    0.73131  |  0.17828  | 0.0736012 |  0.0168094 |
+
+Credits:
+
+- Edward Misback
+- Craig Pfeifer
