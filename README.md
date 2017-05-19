@@ -9,6 +9,7 @@ Stance detection is a method used to determine the quality of a news article by 
 - Disagrees 
 - Discusses
 - Unrelated
+
 With this system, for a set of news headlines, statistics can be gathered with respect to the stances. With these statistics, a user can come to their own conclusion of whether a new organisation has reputable news sources. To achieve these stances, this system will train on the data supplied by the fake news challenge. This data will provide the stance along with the headline and body to allow the system to learn which word combinations lead to which stance. For testing, data will be provided without the stances. To expand upon the baseline, this project will consider stemming words, removing stop words, and smoothing.
 
 
