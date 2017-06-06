@@ -16,7 +16,7 @@ class FeatureData(object):
         self.number_of_articles = len(self.articles)
 
     def get_clean_articles(self):
-        """Retrieves a list of dictionaries containing the fully cleaned articleBody and the Body ID of each article."""
+        """Retrieves a list of dictionaries containing the fully cleaned articleBody and the Body ID of each article"""
         clean_articles = []
 
         for item in self.articles:
@@ -24,7 +24,8 @@ class FeatureData(object):
             tokens = tokenize_text(cleaned_article)
             no_stop_word_tokens = remove_stopwords(tokens)
             lemmatized_tokens = get_tokenized_lemmas(no_stop_word_tokens)
-            clean_articles.append(' '.join(lemmatized_tokens))
+            clean_articles.append({'articleBody': ' '.join(lemmatized_tokens),
+                                   'Body ID': item['Body ID']})
 
         return clean_articles
 
@@ -38,7 +39,9 @@ class FeatureData(object):
             tokens = tokenize_text(cleaned_headline)
             no_stop_word_tokens = remove_stopwords(tokens)
             lemmatized_tokens = get_tokenized_lemmas(no_stop_word_tokens)
-            clean_headlines.append(' '.join(lemmatized_tokens))
+            clean_headlines.append({'Headline': ' '.join(lemmatized_tokens),
+                                    'Body ID': item['Body ID'],
+                                    'Stance': item['Stance']})
 
         return clean_headlines
 
