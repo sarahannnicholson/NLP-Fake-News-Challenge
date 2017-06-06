@@ -31,8 +31,16 @@ class FeatureData(object):
     def get_clean_stances(self):
         """Retrieves a list of dictionaries containing the fully cleaned Headlines and the Body ID and Stance for
         each headline."""
+        clean_headlines = []
 
-        pass
+        for item in self.stances:
+            cleaned_headline = clean(item['Headline'])
+            tokens = tokenize_text(cleaned_headline)
+            no_stop_word_tokens = remove_stopwords(tokens)
+            lemmatized_tokens = get_tokenized_lemmas(no_stop_word_tokens)
+            clean_headlines.append(' '.join(lemmatized_tokens))
+
+        return clean_headlines
 
     def _get_articles(self, path):
         # Body ID, articleBody
@@ -76,5 +84,8 @@ def get_tokenized_lemmas(tokens):
 
 if __name__ == '__main__':
     fd = FeatureData('data/train_bodies.csv', 'data/train_stances.csv')
-    clean_articles = fd.get_clean_articles()
-    print clean_articles[0]
+    cleaned_articles = fd.get_clean_articles()
+    cleaned_stances = fd.get_clean_stances()
+
+    print cleaned_articles[0]
+    print cleaned_stances[0]
