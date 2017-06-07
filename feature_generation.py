@@ -42,9 +42,36 @@ class FeatureGenerator(object):
                 print features
                 print ngram_counts
 
+    def _get_refuting_words(self):
+        """ Retrieves headlines of the articles and indicates a count of each of the refuting words in the headline.
+        Returns a list containing the number of refuting words found (at lease once) in the headline. """
+
+        _refuting_words = [ 'fake', 'fraud', 'hoax', 'false', 'deny', 'denies', 'not',
+        'despite', 'nope', 'doubt', 'doubts', 'bogus', 'debunk', 'pranks', 'retract']
+
+        features = []
+        for stance in self.stances:
+            #print "[DEBUG] stance ", stance
+            count = [1 if refute_word in stance['Headline'] else 0 for refute_word in _refuting_words]
+            #print "[DEBUG] count ", count
+            features.append(count)
+        #print "[DEBUG] features", features
+        return features
 
 if __name__ == '__main__':
     feature_data = FeatureData('data/train_bodies.csv', 'data/train_stances.csv')
     feature_generator = FeatureGenerator(feature_data.get_clean_articles(), feature_data.get_clean_stances())
-    feature_generator._get_ngrams(3)
 
+    feature_generator._get_ngrams(3)
+    feature_generator._get_refuting_words();
+
+
+
+
+
+
+
+
+
+
+    #
