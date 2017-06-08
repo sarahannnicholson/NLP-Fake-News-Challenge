@@ -1,9 +1,11 @@
 import csv
+import logging
 import re
 
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
 from sklearn import feature_extraction
+import tqdm
 
 
 class FeatureData(object):
@@ -18,8 +20,9 @@ class FeatureData(object):
     def get_clean_articles(self):
         """Returns a dictionary with Body ID's as keys and article bodies as values."""
         clean_articles = []
+        logging.debug('Retrieving clean articles...')
 
-        for item in self.articles:
+        for item in tqdm.tqdm(self.articles):
             cleaned_article = clean(item['articleBody'])
             tokens = tokenize_text(cleaned_article)
             no_stop_word_tokens = remove_stopwords(tokens)
@@ -33,8 +36,9 @@ class FeatureData(object):
         """Retrieves a list of dictionaries containing the fully cleaned Headlines and the Body ID and Stance for
         each headline."""
         clean_headlines = []
+        logging.debug('Retrieving clean stances...')
 
-        for item in self.stances:
+        for item in tqdm.tqdm(self.stances):
             cleaned_headline = clean(item['Headline'])
             tokens = tokenize_text(cleaned_headline)
             no_stop_word_tokens = remove_stopwords(tokens)

@@ -1,7 +1,10 @@
 """Methods for generating each feature can be added to the FeatureGenerator class."""
 
+import logging
+
 import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer
+import tqdm
 
 from FeatureData import FeatureData, tokenize_text
 
@@ -15,6 +18,12 @@ class FeatureGenerator(object):
 
     def get_features(self):
         """Retrieves the full set of features as a matrix (the X matrix for training.)"""
+        logging.debug('Retrieving headline ngrams...')
+        ngrams = self._get_ngrams(3)
+        logging.debug('Retrieving refuting words...')
+        refuting_words = self._get_refuting_words()
+        logging.debug('Retrieving polarity...')
+        polarities = self._polarity_feature()
         pass
 
     def _get_ngrams(self, max_ngram_size):
@@ -22,7 +31,7 @@ class FeatureGenerator(object):
         Returns a list of lists, each containing the counts for a different size of ngram."""
         ngrams = [[] for _ in range(max_ngram_size)]
 
-        for stance in self.stances:
+        for stance in tqdm.tqdm(self.stances):
             # Retrieves the vocabulary of ngrams for the headline.
             stance_vectorizer = CountVectorizer(input=stance['Headline'], ngram_range=(1, max_ngram_size))
             stance_vectorizer.fit_transform([stance['Headline']]).toarray()
@@ -64,7 +73,7 @@ class FeatureGenerator(object):
         'despite', 'nope', 'doubt', 'doubts', 'bogus', 'debunk', 'pranks', 'retract']
 
         features = []
-        for stance in self.stances:
+        for stance in tqdm.tqdm(self.stances):
             #print "[DEBUG] stance ", stance
             count = [1 if refute_word in stance['Headline'] else 0 for refute_word in _refuting_words]
             #print "[DEBUG] count ", count
@@ -83,7 +92,7 @@ class FeatureGenerator(object):
             return sum([token in _refuting_words for token in tokens]) % 2
 
         X = []
-        for dict in self.stances:
+        for dict in tqdm.tqdm(self.stances):
             features = []
             features.append(determine_polarity(dict['Headline']))
             features.append(determine_polarity(self.articles.get(dict['Body ID'])))
@@ -93,9 +102,10 @@ class FeatureGenerator(object):
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG)
     feature_data = FeatureData('data/train_bodies.csv', 'data/train_stances.csv')
     feature_generator = FeatureGenerator(feature_data.get_clean_articles(), feature_data.get_clean_stances())
-
-    feature_generator._get_ngrams(3)
-    feature_generator._get_refuting_words()
-    X = feature_generator._polarity_feature()
+    feature_generator.get_features()
+    # feature_generator._get_ngrams(3)
+    # feature_generator._get_refuting_words()
+    # X = feature_generator._polarity_feature()
