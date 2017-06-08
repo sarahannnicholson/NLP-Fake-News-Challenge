@@ -15,32 +15,46 @@ class FeatureGenerator(object):
 
     def get_features(self):
         """Retrieves the full set of features as a matrix (the X matrix for training.)"""
+        pass
 
     def _get_ngrams(self, max_ngram_size):
         """Retrieves counts for ngrams of the article title in the article itself, from one up to size max_ngram_size.
-        Returns a list containing the ngram counts."""
+        Returns a list of lists, each containing the counts for a different size of ngram."""
+        ngrams = [[] for _ in range(max_ngram_size)]
 
-        for article, stance in zip(self.articles, self.stances):
-            # Retrieves the vocabulary of ngrams for the title.
+        for stance in self.stances:
+            # Retrieves the vocabulary of ngrams for the headline.
             stance_vectorizer = CountVectorizer(input=stance['Headline'], ngram_range=(1, max_ngram_size))
             stance_vectorizer.fit_transform([stance['Headline']]).toarray()
 
             # Search the article text and count headline ngrams.
             vocab = stance_vectorizer.get_feature_names()
-            vectorizer = CountVectorizer(input=article['articleBody'], vocabulary=vocab, ngram_range=(1, max_ngram_size))
-            ngram_counts = vectorizer.fit_transform([article['articleBody']]).toarray()
+            vectorizer = CountVectorizer(input=self.articles[stance['Body ID']], vocabulary=vocab,
+                                         ngram_range=(1, max_ngram_size))
+            ngram_counts = vectorizer.fit_transform([self.articles[stance['Body ID']]]).toarray()
             features = vectorizer.get_feature_names()
 
-            if np.count_nonzero(ngram_counts[0]) > 1:
-                for x in np.nditer(np.nonzero(ngram_counts[0])):
-                    print features[x]
+            aggregated_counts = [0] * max_ngram_size
 
-                print 'Headline:'
-                print stance['Headline']
-                print 'Article:'
-                print article['articleBody']
-                print features
-                print ngram_counts
+            # Create a list of the aggregated counts of each ngram size.
+            for index in np.nditer(np.nonzero(ngram_counts[0]), ['zerosize_ok']):
+                aggregated_counts[len(features[index].split()) - 1] += ngram_counts[0][index]
+
+            for index, count in enumerate(aggregated_counts):
+                ngrams[index].append(count)
+
+            # DEBUG
+            # if np.count_nonzero(ngram_counts[0]) > 1:
+            #     for x in np.nditer(np.nonzero(ngram_counts[0])):
+            #         print features[x]
+            #     print aggregated_counts
+            #     print 'Headline:'
+            #     print stance['Headline']
+            #     print 'Article:'
+            #     print self.articles[stance['Body ID']]
+            #     print features
+            #     print ngram_counts
+        # print ngrams
 
     def _get_refuting_words(self):
         """ Retrieves headlines of the articles and indicates a count of each of the refuting words in the headline.
@@ -63,7 +77,7 @@ if __name__ == '__main__':
     feature_generator = FeatureGenerator(feature_data.get_clean_articles(), feature_data.get_clean_stances())
 
     feature_generator._get_ngrams(3)
-    feature_generator._get_refuting_words();
+    # feature_generator._get_refuting_words()
 
 
 
