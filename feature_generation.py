@@ -99,13 +99,3 @@ if __name__ == '__main__':
     feature_generator._get_ngrams(3)
     feature_generator._get_refuting_words()
     X = feature_generator._polarity_feature()
-
-
-
-
-
-
-
-
-
-    #
