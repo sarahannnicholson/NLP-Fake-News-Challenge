@@ -16,7 +16,7 @@ class FeatureData(object):
         self.number_of_articles = len(self.articles)
 
     def get_clean_articles(self):
-        """Retrieves a list of dictionaries containing the fully cleaned articleBody and the Body ID of each article"""
+        """Returns a dictionary with Body ID's as keys and article bodies as values."""
         clean_articles = []
 
         for item in self.articles:
@@ -27,7 +27,7 @@ class FeatureData(object):
             clean_articles.append({'articleBody': ' '.join(lemmatized_tokens),
                                    'Body ID': item['Body ID']})
 
-        return clean_articles
+        return {article['Body ID']: article['articleBody'] for article in clean_articles}
 
     def get_clean_stances(self):
         """Retrieves a list of dictionaries containing the fully cleaned Headlines and the Body ID and Stance for
@@ -51,6 +51,7 @@ class FeatureData(object):
         with open(path, 'r') as csv_file:
             reader = csv.DictReader(csv_file)
             for row in reader:
+                row['Body ID'] = int(row['Body ID'])
                 articles.append(row)
         return articles
 
@@ -60,6 +61,7 @@ class FeatureData(object):
         with open(path, 'r') as csv_file:
             reader = csv.DictReader(csv_file)
             for row in reader:
+                row['Body ID'] = int(row['Body ID'])
                 stances.append(row)
         return stances
 
@@ -91,4 +93,5 @@ if __name__ == '__main__':
     cleaned_stances = fd.get_clean_stances()
 
     print cleaned_articles[0]
+    print cleaned_articles[4]
     print cleaned_stances[0]
