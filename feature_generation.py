@@ -3,11 +3,13 @@
 import logging
 
 import numpy as np
-from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 import tqdm
 
 from FeatureData import FeatureData, tokenize_text
 
+from nltk import word_tokenize, pos_tag, ne_chunk
+from nltk.chunk import tree2conlltags
 
 class FeatureGenerator(object):
     """Class responsible for generating each feature used in the X matrix."""
@@ -39,6 +41,11 @@ class FeatureGenerator(object):
         features.append(polarity)
         feature_names.append('headline_polarity')
         feature_names.append('article_polarity')
+
+        logging.debug('Retrieving named entity cosine...')
+        named_cosine = np.array(self._named_entity_feature()).reshape(len(self._stances), 2)
+        features.append(named_cosine)
+        feature_names.append('named_cosine')
 
         return {'feature_matrix': np.concatenate(features, axis=1), 'feature_names': feature_names}
 
@@ -99,6 +106,31 @@ class FeatureGenerator(object):
             polarities[1].append(determine_polarity(self._articles.get(stance['Body ID'])))
 
         return polarities
+
+
+    def _named_entity_feature(self):
+        """ Retrieves a list of Named Entities from the Headline and Body.
+        Returns a list containing the cosine simmilarity between the counts of the named entities """
+
+        def determine_named_entities(text):
+            named_tags = pos_tag(word_tokenize(text.encode('ascii', 'ignore')))
+            return " ".join([name[0] for name in named_tags if name[1].startswith("NN")])
+
+        named_cosine = []
+        for stance in tqdm.tqdm(self._stances):
+            head = determine_named_entities(stance['Headline'])
+            body = determine_named_entities(self._articles.get(stance['Body ID']))
+            vect = TfidfVectorizer(min_df=1)
+            tfidf = vect.fit_transform([head,body])
+            cosine = (tfidf * tfidf.T).todense().tolist()
+            if len(cosine) == 2:
+                named_cosine.append(cosine[1][0])
+            else:
+                named_cosine.append(0)
+
+        named_cosine = named_cosine/max(named_cosine)
+        return named_cosine
+
 
 
 if __name__ == '__main__':
