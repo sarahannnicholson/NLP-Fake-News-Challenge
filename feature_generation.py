@@ -53,7 +53,7 @@ class FeatureGenerator(object):
         named_cosine = np.array(self._named_entity_feature()).reshape(len(self._stances), 1)
         features.append(named_cosine)
         feature_names.append('named_cosine')
-        self._feature_to_csv(named_cosine, 'named_cosine', 'features/named_cosine.csv')
+        self._feature_to_csv(named_cosine, ['named_cosine'], 'features/named_cosine.csv')
 
         return {'feature_matrix': np.concatenate(features, axis=1), 'feature_names': feature_names}
 
@@ -88,10 +88,11 @@ class FeatureGenerator(object):
                 aggregated_counts[len(features[index].split()) - 1] += ngram_counts[0][index]
 
             # attempt to standardize ngram counts across headlines and bodies of varying length by dividing total
-            # ngram hits by the length of the headline.
-            aggregated_counts = [count/len(stance['Headline']) for count in aggregated_counts]
+            # ngram hits by the length of the headline. These will need to be normalized later so they lie
+            # between 0 and 1.
+            standardized_counts = [1.0*count/len(stance['Headline'].split()) for count in aggregated_counts]
 
-            ngrams.append(aggregated_counts)
+            ngrams.append(standardized_counts)
 
         return ngrams
 
