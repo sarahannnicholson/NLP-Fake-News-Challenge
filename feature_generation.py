@@ -11,6 +11,7 @@ from FeatureData import FeatureData, tokenize_text
 from nltk import word_tokenize, pos_tag, ne_chunk
 from nltk.chunk import tree2conlltags
 
+
 class FeatureGenerator(object):
     """Class responsible for generating each feature used in the X matrix."""
 
@@ -22,37 +23,50 @@ class FeatureGenerator(object):
                                 'doubts', 'bogus', 'debunk', 'pranks', 'retract']
 
     def get_features(self):
-        """Retrieves the full set of features as a matrix (the X matrix for training.)"""
+        """Retrieves the full set of features as a matrix (the X matrix for training). You only need to run this
+        if the features have been updated since the last time they were output to a file under the features
+        directory."""
         feature_names = []
         features = []
 
         logging.debug('Retrieving headline ngrams...')
-        ngrams = np.array(self._get_ngrams()).reshape(len(self._stances), self._max_ngram_size)
+        ngrams = np.array(self._get_ngrams())
         features.append(ngrams)
-        [feature_names.append('ngram_' + str(count)) for count in range(1, self._max_ngram_size + 1)]
+        ngram_headings = [('ngram_' + str(count)) for count in range(1, self._max_ngram_size + 1)]
+        feature_names.append(ngram_headings)
+        self._feature_to_csv(ngrams, ngram_headings, 'features/ngrams.csv')
 
         logging.debug('Retrieving refuting words...')
-        refuting = np.array(self._get_refuting_words()).reshape((len(self._stances), len(self._refuting_words)))
+        refuting = np.array(self._get_refuting_words())
         features.append(refuting)
         [feature_names.append(word + '_refuting') for word in self._refuting_words]
+        self._feature_to_csv(refuting, self._refuting_words, 'features/refuting.csv')
 
         logging.debug('Retrieving polarity...')
-        polarity = np.array(self._polarity_feature()).reshape(len(self._stances), 2)
+        polarity = np.array(self._polarity_feature())
         features.append(polarity)
         feature_names.append('headline_polarity')
         feature_names.append('article_polarity')
+        self._feature_to_csv(polarity, ['headline_polarity', 'article_polarity'], 'features/polarity.csv')
 
         logging.debug('Retrieving named entity cosine...')
-        named_cosine = np.array(self._named_entity_feature()).reshape(len(self._stances), 2)
+        named_cosine = np.array(self._named_entity_feature()).reshape(len(self._stances), 1)
         features.append(named_cosine)
         feature_names.append('named_cosine')
+        self._feature_to_csv(named_cosine, 'named_cosine', 'features/named_cosine.csv')
 
         return {'feature_matrix': np.concatenate(features, axis=1), 'feature_names': feature_names}
+
+    def _feature_to_csv(self, feature, feature_headers, output_path):
+        """Outputs a feature to a csv file. feature is a 2d numpy matrix containing the feature values and
+        feature headers is a list containing the feature's column headings."""
+        header = ','.join(feature_headers)
+        np.savetxt(fname=output_path, X=feature, delimiter=',', header=header, comments='')
 
     def _get_ngrams(self):
         """Retrieves counts for ngrams of the article title in the article itself, from one up to size max_ngram_size.
         Returns a list of lists, each containing the counts for a different size of ngram."""
-        ngrams = [[] for _ in range(self._max_ngram_size)]
+        ngrams = []
 
         for stance in tqdm.tqdm(self._stances):
             # Retrieves the vocabulary of ngrams for the headline.
@@ -66,14 +80,13 @@ class FeatureGenerator(object):
             ngram_counts = vectorizer.fit_transform([self._articles[stance['Body ID']]]).toarray()
             features = vectorizer.get_feature_names()
 
-            aggregated_counts = [0] * self._max_ngram_size
+            aggregated_counts = [0 for _ in range(self._max_ngram_size)]
 
             # Create a list of the aggregated counts of each ngram size.
             for index in np.nditer(np.nonzero(ngram_counts[0]), ['zerosize_ok']):
                 aggregated_counts[len(features[index].split()) - 1] += ngram_counts[0][index]
 
-            for index, count in enumerate(aggregated_counts):
-                ngrams[index].append(count)
+            ngrams.append(aggregated_counts)
 
         return ngrams
 
@@ -100,13 +113,13 @@ class FeatureGenerator(object):
             tokens = tokenize_text(text)
             return sum([token in _refuting_words for token in tokens]) % 2
 
-        polarities = [[], []]
+        polarities = []
         for stance in tqdm.tqdm(self._stances):
-            polarities[0].append(determine_polarity(stance['Headline']))
-            polarities[1].append(determine_polarity(self._articles.get(stance['Body ID'])))
+            headline_polarity = determine_polarity(stance['Headline'])
+            body_polarity = determine_polarity(self._articles.get(stance['Body ID']))
+            polarities.append([headline_polarity, body_polarity])
 
         return polarities
-
 
     def _named_entity_feature(self):
         """ Retrieves a list of Named Entities from the Headline and Body.
@@ -128,9 +141,8 @@ class FeatureGenerator(object):
             else:
                 named_cosine.append(0)
 
-        named_cosine = named_cosine/max(named_cosine)
+        named_cosine = [item/max(named_cosine) for item in named_cosine]
         return named_cosine
-
 
 
 if __name__ == '__main__':
