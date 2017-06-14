@@ -1,6 +1,7 @@
 """Methods for generating each feature can be added to the FeatureGenerator class."""
 
 import logging
+import os
 
 import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
@@ -15,12 +16,28 @@ from nltk.chunk import tree2conlltags
 class FeatureGenerator(object):
     """Class responsible for generating each feature used in the X matrix."""
 
-    def __init__(self, clean_articles, clean_stances):
+    def __init__(self, clean_articles, clean_stances, load_data=True):
         self._articles = clean_articles  # dictionary {article ID: body}
         self._stances = clean_stances  # list of dictionaries
         self._max_ngram_size = 3
         self._refuting_words = ['fake', 'fraud', 'hoax', 'false', 'deny', 'denies', 'not', 'despite', 'nope', 'doubt',
                                 'doubts', 'bogus', 'debunk', 'pranks', 'retract']
+
+    @staticmethod
+    def get_features_from_file():
+        """Returns the full set of features as a 2d numpy array by concatenating all of the feature csv files located
+        under the features directory."""
+        features = []
+        for feature_csv in os.listdir('features'):
+            with open(os.path.join('features', feature_csv)) as f:
+                content = np.loadtxt(fname=f, comments='', delimiter=',', skiprows=1)
+
+                if len(content.shape) == 1:
+                    content = content.reshape(content.shape[0], 1)
+
+                features.append(content)
+
+        return np.concatenate(features, axis=1)
 
     def get_features(self):
         """Retrieves the full set of features as a matrix (the X matrix for training). You only need to run this
