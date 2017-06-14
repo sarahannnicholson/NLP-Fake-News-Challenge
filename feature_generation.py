@@ -70,7 +70,8 @@ class FeatureGenerator(object):
 
         for stance in tqdm.tqdm(self._stances):
             # Retrieves the vocabulary of ngrams for the headline.
-            stance_vectorizer = CountVectorizer(input=stance['Headline'], ngram_range=(1, self._max_ngram_size))
+            stance_vectorizer = CountVectorizer(input=stance['Headline'], ngram_range=(1, self._max_ngram_size),
+                                                binary=True)
             stance_vectorizer.fit_transform([stance['Headline']]).toarray()
 
             # Search the article text and count headline ngrams.
@@ -85,6 +86,10 @@ class FeatureGenerator(object):
             # Create a list of the aggregated counts of each ngram size.
             for index in np.nditer(np.nonzero(ngram_counts[0]), ['zerosize_ok']):
                 aggregated_counts[len(features[index].split()) - 1] += ngram_counts[0][index]
+
+            # attempt to standardize ngram counts across headlines and bodies of varying length by dividing total
+            # ngram hits by the length of the headline.
+            aggregated_counts = [count/len(stance['Headline']) for count in aggregated_counts]
 
             ngrams.append(aggregated_counts)
 
