@@ -14,15 +14,15 @@ With this system, for a set of news headlines, statistics can be gathered with r
 
 
 # Developer commands
-To generate the features
-python feature_generation.py
+To generate the features <br />
+`python feature_generation.py`
 
-To train and get analysis
-python svm.py
+To train and get analysis <br />
+`python svm.py`
 
 # Sources
-[FNC baseline repo](https://github.com/FakeNewsChallenge/fnc-1-baseline)
-[FakeChallenge.org](http://fakenewschallenge.org).
+[FNC baseline repo](https://github.com/FakeNewsChallenge/fnc-1-baseline) <br />
+[FakeChallenge.org](http://fakenewschallenge.org) <br />
 [Fnc-1 repo](https://github.com/FakeNewsChallenge/fnc-1) 
 
 
