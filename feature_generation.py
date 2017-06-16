@@ -11,31 +11,34 @@ from FeatureData import FeatureData, tokenize_text
 
 from nltk import word_tokenize, pos_tag, ne_chunk
 from nltk.chunk import tree2conlltags
+from nltk.stem import PorterStemmer
 
 
 class FeatureGenerator(object):
     """Class responsible for generating each feature used in the X matrix."""
 
-    def __init__(self, clean_articles, clean_stances, load_data=True):
+    def __init__(self, clean_articles, clean_stances, original_articles, load_data=True):
         self._articles = clean_articles  # dictionary {article ID: body}
+        self._original_articles = original_articles
         self._stances = clean_stances  # list of dictionaries
         self._max_ngram_size = 3
         self._refuting_words = ['fake', 'fraud', 'hoax', 'false', 'deny', 'denies', 'not', 'despite', 'nope', 'doubt',
                                 'doubts', 'bogus', 'debunk', 'pranks', 'retract']
 
     @staticmethod
-    def get_features_from_file():
+    def get_features_from_file(use=[]):
         """Returns the full set of features as a 2d numpy array by concatenating all of the feature csv files located
         under the features directory."""
         features = []
         for feature_csv in os.listdir('features'):
-            with open(os.path.join('features', feature_csv)) as f:
-                content = np.loadtxt(fname=f, comments='', delimiter=',', skiprows=1)
+            if np.count_nonzero([feature_csv.startswith(x) for x in use]):
+                with open(os.path.join('features', feature_csv)) as f:
+                    content = np.loadtxt(fname=f, comments='', delimiter=',', skiprows=1)
 
-                if len(content.shape) == 1:
-                    content = content.reshape(content.shape[0], 1)
+                    if len(content.shape) == 1:
+                        content = content.reshape(content.shape[0], 1)
 
-                features.append(content)
+                    features.append(content)
 
         return np.concatenate(features, axis=1)
 
@@ -147,23 +150,26 @@ class FeatureGenerator(object):
     def _named_entity_feature(self):
         """ Retrieves a list of Named Entities from the Headline and Body.
         Returns a list containing the cosine simmilarity between the counts of the named entities """
-
+        stemmer = PorterStemmer()
         def determine_named_entities(text):
             named_tags = pos_tag(word_tokenize(text.encode('ascii', 'ignore')))
-            return " ".join([name[0] for name in named_tags if name[1].startswith("NN")])
+            return " ".join([stemmer.stem(name[0]) for name in named_tags if name[1].startswith("NN")])
 
         named_cosine = []
         for stance in tqdm.tqdm(self._stances):
-            head = determine_named_entities(stance['Headline'])
-            body = determine_named_entities(self._articles.get(stance['Body ID']))
-            vect = TfidfVectorizer(min_df=1)
-            tfidf = vect.fit_transform([head,body])
-            cosine = (tfidf * tfidf.T).todense().tolist()
-            if len(cosine) == 2:
-                named_cosine.append(cosine[1][0])
+            head = determine_named_entities(stance['originalHeadline'])
+            body = determine_named_entities(self._original_articles.get(stance['Body ID'])[:400])
+            if head and body:
+                vect = TfidfVectorizer(min_df=1)
+                tfidf = vect.fit_transform([head,body])
+                cosine = (tfidf * tfidf.T).todense().tolist()
+                if len(cosine) == 2:
+                    named_cosine.append(cosine[1][0])
+                else:
+                    named_cosine.append(0)
             else:
                 named_cosine.append(0)
-
+            #print stance['Stance'] + ": " + str(named_cosine[-1])
         named_cosine = [item/max(named_cosine) for item in named_cosine]
         return named_cosine
 
@@ -171,7 +177,7 @@ class FeatureGenerator(object):
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     feature_data = FeatureData('data/train_bodies.csv', 'data/train_stances.csv')
-    feature_generator = FeatureGenerator(feature_data.get_clean_articles(), feature_data.get_clean_stances())
+    feature_generator = FeatureGenerator(feature_data.get_clean_articles(), feature_data.get_clean_stances(), feature_data.get_original_articles())
     features = feature_generator.get_features()
     feature_matrix = features['feature_matrix']
     feature_names = features['feature_names']
