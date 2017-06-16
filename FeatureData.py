@@ -29,7 +29,16 @@ class FeatureData(object):
             lemmatized_tokens = get_tokenized_lemmas(no_stop_word_tokens)
             clean_articles.append({'articleBody': ' '.join(lemmatized_tokens),
                                    'Body ID': item['Body ID']})
+        return {article['Body ID']: article['articleBody'] for article in clean_articles}
 
+    #We need the stop words for POS tagging to work propperly
+    def get_original_articles(self):
+        clean_articles = []
+        logging.debug('Retrieving original articles...')
+        for item in tqdm.tqdm(self.articles):
+            cleaned_article = clean(item['articleBody'])
+            clean_articles.append({'articleBody':cleaned_article,
+                                   'Body ID': item['Body ID']})
         return {article['Body ID']: article['articleBody'] for article in clean_articles}
 
     def get_clean_stances(self):
@@ -44,6 +53,7 @@ class FeatureData(object):
             no_stop_word_tokens = remove_stopwords(tokens)
             lemmatized_tokens = get_tokenized_lemmas(no_stop_word_tokens)
             clean_headlines.append({'Headline': ' '.join(lemmatized_tokens),
+                                    'originalHeadline': cleaned_headline,
                                     'Body ID': item['Body ID'],
                                     'Stance': item['Stance']})
 
@@ -94,6 +104,7 @@ def get_tokenized_lemmas(tokens):
 if __name__ == '__main__':
     fd = FeatureData('data/train_bodies.csv', 'data/train_stances.csv')
     cleaned_articles = fd.get_clean_articles()
+    original_articles = fd.get_original_articles()
     cleaned_stances = fd.get_clean_stances()
 
     print cleaned_articles[0]
