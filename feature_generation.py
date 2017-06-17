@@ -72,6 +72,12 @@ class FeatureGenerator(object):
         feature_names.append('named_cosine')
         self._feature_to_csv(named_cosine, ['named_cosine'], 'features/named_cosine.csv')
 
+        logging.debug('Retrieving jaccard similarities...')
+        jaccard = np.array(self._get_jaccard_similarity()).reshape(len(self._stances), 1)
+        features.append(jaccard)
+        feature_names.append('jaccard_similarity')
+        self._feature_to_csv(jaccard, ['jaccard_similarity'], 'features/jaccard_similarity.csv')
+
         return {'feature_matrix': np.concatenate(features, axis=1), 'feature_names': feature_names}
 
     def _feature_to_csv(self, feature, feature_headers, output_path):
@@ -166,6 +172,18 @@ class FeatureGenerator(object):
 
         named_cosine = [item/max(named_cosine) for item in named_cosine]
         return named_cosine
+
+    def _get_jaccard_similarity(self):
+        """ Get the jaccard similarities for each headline and article body pair. Jaccard similarity is defined as
+        J(A, B) = |A intersect B| / |A union B|. Try to normalize by only considering the first"""
+        similarities = []
+        for stance in tqdm.tqdm(self._stances):
+            headline = set(stance['Headline'].split())
+            body = set(self._articles.get(stance['Body ID']).split()[:255])
+            jaccard = float(len(headline.intersection(body))) / len(headline.union(body))
+            similarities.append(jaccard)
+
+        return similarities
 
 
 if __name__ == '__main__':
