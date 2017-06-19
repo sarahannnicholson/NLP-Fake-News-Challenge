@@ -41,10 +41,7 @@ class SVMModel(object):
         for i, stance in enumerate(y_test):
             predicted.append(svm_classifier.predict([X_test[i]])[0])
 
-        print str(self._use_features)
-        print "Precision %f" % self.precision(y_test, predicted)
-        print "Recal %f" % self.recal(y_test, predicted)
-        print "Accuracy %f" % self.accuracy(y_test, predicted)
+        return predicted
 
     def precision(self, actual, predicted):
         pairs = zip(actual, predicted)
@@ -80,4 +77,9 @@ if __name__ == '__main__':
         y_train = data['y'][:-testNum]
 
     classifier = model.get_trained_classifier(X_train, y_train)
-    model.test_classifier(classifier, X_test, y_test)
+    predicted = model.test_classifier(classifier, X_test, y_test)
+
+    print str(model._use_features)
+    print "Precision %f" % model.precision(y_test, predicted)
+    print "Recal %f" % model.recal(y_test, predicted)
+    print "Accuracy %f" % model.accuracy(y_test, predicted)
