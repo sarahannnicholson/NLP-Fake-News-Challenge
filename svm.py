@@ -15,8 +15,8 @@ class SVMModel(object):
             'named'
         ]
 
-    def get_data(self):
-        feature_data = FeatureData('data/train_bodies.csv', 'data/train_stances.csv')
+    def get_data(self, body_file, stance_file):
+        feature_data = FeatureData(body_file, stance_file)
         X_train = FeatureGenerator.get_features_from_file(self._use_features)
         y_train = np.asarray([self._stance_map[stance['Stance']] for stance in feature_data.stances])
 
@@ -29,11 +29,10 @@ class SVMModel(object):
     def related_unrelated(self, y):
         return [x > 0 for x in y]
 
-    def get_trained_classifier(self, X_train, y_Train):
+    def get_trained_classifier(self, X_train, y_train):
         """Trains the svm classifier and returns the trained classifier to be used for prediction on test data. Note
         that stances in test data will need to be translated to the numbers shown in self._stance_map."""
-
-        svm_classifier = svm.SVC(decision_function_shape='ovo')
+        svm_classifier = svm.SVC(decision_function_shape='ovr', cache_size=1000)
         svm_classifier.fit(X_train, y_train)
         return svm_classifier
 
@@ -66,7 +65,7 @@ class SVMModel(object):
 
 if __name__ == '__main__':
     model = SVMModel()
-    data = model.get_data()
+    data = model.get_data('data/train_bodies.csv', 'data/train_stances.csv')
     testNum = 1000
 
     X_test = data['X'][-testNum:]
