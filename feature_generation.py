@@ -26,13 +26,13 @@ class FeatureGenerator(object):
                                 'doubts', 'bogus', 'debunk', 'pranks', 'retract']
 
     @staticmethod
-    def get_features_from_file(use=[]):
+    def get_features_from_file(features_directory, use=[]):
         """Returns the full set of features as a 2d numpy array by concatenating all of the feature csv files located
         under the features directory."""
         features = []
-        for feature_csv in os.listdir('features'):
+        for feature_csv in os.listdir(features_directory):
             if np.count_nonzero([feature_csv.startswith(x) for x in use]):
-                with open(os.path.join('features', feature_csv)) as f:
+                with open(os.path.join(features_directory, feature_csv)) as f:
                     content = np.loadtxt(fname=f, comments='', delimiter=',', skiprows=1)
 
                     if len(content.shape) == 1:
@@ -54,32 +54,32 @@ class FeatureGenerator(object):
         features.append(ngrams)
         ngram_headings = [('ngram_' + str(count)) for count in range(1, self._max_ngram_size + 1)]
         feature_names.append(ngram_headings)
-        self._feature_to_csv(ngrams, ngram_headings, 'features/ngrams.csv')
+        self._feature_to_csv(ngrams, ngram_headings, 'test_features/ngrams.csv')
 
         logging.debug('Retrieving refuting words...')
         refuting = np.array(self._get_refuting_words())
         features.append(refuting)
         [feature_names.append(word + '_refuting') for word in self._refuting_words]
-        self._feature_to_csv(refuting, self._refuting_words, 'features/refuting.csv')
+        self._feature_to_csv(refuting, self._refuting_words, 'test_features/refuting.csv')
 
         logging.debug('Retrieving polarity...')
         polarity = np.array(self._polarity_feature())
         features.append(polarity)
         feature_names.append('headline_polarity')
         feature_names.append('article_polarity')
-        self._feature_to_csv(polarity, ['headline_polarity', 'article_polarity'], 'features/polarity.csv')
+        self._feature_to_csv(polarity, ['headline_polarity', 'article_polarity'], 'test_features/polarity.csv')
 
         logging.debug('Retrieving named entity cosine...')
         named_cosine = np.array(self._named_entity_feature()).reshape(len(self._stances), 1)
         features.append(named_cosine)
         feature_names.append('named_cosine')
-        self._feature_to_csv(named_cosine, ['named_cosine'], 'features/named_cosine.csv')
+        self._feature_to_csv(named_cosine, ['named_cosine'], 'test_features/named_cosine.csv')
 
         logging.debug('Retrieving jaccard similarities...')
         jaccard = np.array(self._get_jaccard_similarity()).reshape(len(self._stances), 1)
         features.append(jaccard)
         feature_names.append('jaccard_similarity')
-        self._feature_to_csv(jaccard, ['jaccard_similarity'], 'features/jaccard_similarity.csv')
+        self._feature_to_csv(jaccard, ['jaccard_similarity'], 'test_features/jaccard_similarity.csv')
 
         return {'feature_matrix': np.concatenate(features, axis=1), 'feature_names': feature_names}
 
@@ -194,7 +194,7 @@ class FeatureGenerator(object):
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
-    feature_data = FeatureData('data/train_bodies.csv', 'data/train_stances.csv')
+    feature_data = FeatureData('data/competition_test_bodies.csv', 'data/competition_test_stances.csv')
     feature_generator = FeatureGenerator(feature_data.get_clean_articles(), feature_data.get_clean_stances(), feature_data.get_original_articles())
     features = feature_generator.get_features()
     feature_matrix = features['feature_matrix']
