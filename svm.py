@@ -7,17 +7,18 @@ from FeatureData import FeatureData
 
 class SVMModel(object):
     def __init__(self):
-        self._stance_map = {'unrelated': 0, 'discuss': 2, 'agree': 3, 'disagree': 4}
+        self._stance_map = {'unrelated': 0, 'discuss': 1, 'agree': 2, 'disagree': 3}
         self._use_features= [
-#            'refuting',
-            'ngrams',
-#            'polarity',
-            'named'
+           'refuting',
+           'ngrams',
+           'polarity',
+           'named',
+           'jaccard'
         ]
 
-    def get_data(self, body_file, stance_file):
+    def get_data(self, body_file, stance_file, features_directory):
         feature_data = FeatureData(body_file, stance_file)
-        X_train = FeatureGenerator.get_features_from_file(self._use_features)
+        X_train = FeatureGenerator.get_features_from_file(use=self._use_features, features_directory=features_directory)
         y_train = np.asarray([self._stance_map[stance['Stance']] for stance in feature_data.stances])
 
         # Scale features to range[0, 1] to prevent larger features from dominating smaller ones
@@ -62,13 +63,13 @@ class SVMModel(object):
 
 if __name__ == '__main__':
     model = SVMModel()
-    data = model.get_data('data/train_bodies.csv', 'data/train_stances.csv')
+    data = model.get_data('data/train_bodies.csv', 'data/train_stances.csv', 'features')
     testNum = 1000
 
     X_test = data['X'][-testNum:]
     X_train = data['X'][:-testNum]
 
-    Only_R_UR = True
+    Only_R_UR = False
     if Only_R_UR:
         y_test = model.related_unrelated(data['y'][-testNum:])
         y_train = model.related_unrelated(data['y'][:-testNum])
