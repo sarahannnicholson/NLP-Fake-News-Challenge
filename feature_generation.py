@@ -9,7 +9,8 @@ import tqdm
 
 from FeatureData import FeatureData, tokenize_text
 
-from nltk import word_tokenize, pos_tag, ne_chunk
+from nltk import word_tokenize, pos_tag, ne_chunk, sent_tokenize
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from nltk.chunk import tree2conlltags
 from nltk.stem import PorterStemmer
 
@@ -42,44 +43,57 @@ class FeatureGenerator(object):
 
         return np.concatenate(features, axis=1)
 
-    def get_features(self):
+    def get_features(self, features_directory="features"):
         """Retrieves the full set of features as a matrix (the X matrix for training). You only need to run this
         if the features have been updated since the last time they were output to a file under the features
         directory."""
         feature_names = []
         features = []
 
-        logging.debug('Retrieving headline ngrams...')
-        ngrams = np.array(self._get_ngrams())
-        features.append(ngrams)
-        ngram_headings = [('ngram_' + str(count)) for count in range(1, self._max_ngram_size + 1)]
-        feature_names.append(ngram_headings)
-        self._feature_to_csv(ngrams, ngram_headings, 'test_features/ngrams.csv')
+        if False:
+            logging.debug('Retrieving headline ngrams...')
+            ngrams = np.array(self._get_ngrams())
+            features.append(ngrams)
+            ngram_headings = [('ngram_' + str(count)) for count in range(1, self._max_ngram_size + 1)]
+            feature_names.append(ngram_headings)
+            self._feature_to_csv(ngrams, ngram_headings, features_directory+'/ngrams.csv')
 
-        logging.debug('Retrieving refuting words...')
-        refuting = np.array(self._get_refuting_words())
-        features.append(refuting)
-        [feature_names.append(word + '_refuting') for word in self._refuting_words]
-        self._feature_to_csv(refuting, self._refuting_words, 'test_features/refuting.csv')
+        if False:
+            logging.debug('Retrieving refuting words...')
+            refuting = np.array(self._get_refuting_words())
+            features.append(refuting)
+            [feature_names.append(word + '_refuting') for word in self._refuting_words]
+            self._feature_to_csv(refuting, self._refuting_words, features_directory+'/refuting.csv')
 
-        logging.debug('Retrieving polarity...')
-        polarity = np.array(self._polarity_feature())
-        features.append(polarity)
-        feature_names.append('headline_polarity')
-        feature_names.append('article_polarity')
-        self._feature_to_csv(polarity, ['headline_polarity', 'article_polarity'], 'test_features/polarity.csv')
+        if False:
+            logging.debug('Retrieving polarity...')
+            polarity = np.array(self._polarity_feature())
+            features.append(polarity)
+            feature_names.append('headline_polarity')
+            feature_names.append('article_polarity')
+            self._feature_to_csv(polarity, ['headline_polarity', 'article_polarity'], features_directory+'/polarity.csv')
 
-        logging.debug('Retrieving named entity cosine...')
-        named_cosine = np.array(self._named_entity_feature()).reshape(len(self._stances), 1)
-        features.append(named_cosine)
-        feature_names.append('named_cosine')
-        self._feature_to_csv(named_cosine, ['named_cosine'], 'test_features/named_cosine.csv')
+        if True:
+            logging.debug('Retrieving named entity cosine...')
+            named_cosine = np.array(self._named_entity_feature()).reshape(len(self._stances), 1)
+            features.append(named_cosine)
+            feature_names.append('named_cosine')
+            self._feature_to_csv(named_cosine, ['named_cosine'], features_directory+'/named_cosine.csv')
 
-        logging.debug('Retrieving jaccard similarities...')
-        jaccard = np.array(self._get_jaccard_similarity()).reshape(len(self._stances), 1)
-        features.append(jaccard)
-        feature_names.append('jaccard_similarity')
-        self._feature_to_csv(jaccard, ['jaccard_similarity'], 'test_features/jaccard_similarity.csv')
+        if True:
+            logging.debug('Retrieving VADER...')
+            vader = np.array(self._vader_feature()).reshape(len(self._stances), 2)
+            features.append(vader)
+            feature_names.append('vader_pos')
+            feature_names.append('vader_neg')
+            self._feature_to_csv(vader, ['vader'], features_directory+'/vader.csv')
+
+        if False:
+            logging.debug('Retrieving jaccard similarities...')
+            jaccard = np.array(self._get_jaccard_similarity()).reshape(len(self._stances), 1)
+            features.append(jaccard)
+            feature_names.append('jaccard_similarity')
+            self._feature_to_csv(jaccard, ['jaccard_similarity'], features_directory+'/jaccard_similarity.csv')
 
         return {'feature_matrix': np.concatenate(features, axis=1), 'feature_names': feature_names}
 
@@ -157,27 +171,46 @@ class FeatureGenerator(object):
         """ Retrieves a list of Named Entities from the Headline and Body.
         Returns a list containing the cosine simmilarity between the counts of the named entities """
         stemmer = PorterStemmer()
-        def determine_named_entities(text):
-            named_tags = pos_tag(word_tokenize(text.encode('ascii', 'ignore')))
-            return " ".join([stemmer.stem(name[0]) for name in named_tags if name[1].startswith("NN")])
+        def get_tags(text):
+            return pos_tag(word_tokenize(text.encode('ascii', 'ignore')))
+
+        def filter_pos(named_tags, tag):
+            return " ".join([stemmer.stem(name[0]) for name in named_tags if name[1].startswith(tag)])
 
         named_cosine = []
+        tags = ["NN"]
         for stance in tqdm.tqdm(self._stances):
-            head = determine_named_entities(stance['originalHeadline'])
-            body = determine_named_entities(self._original_articles.get(stance['Body ID'])[:400])
-            if head and body:
-                vect = TfidfVectorizer(min_df=1)
-                tfidf = vect.fit_transform([head,body])
-                cosine = (tfidf * tfidf.T).todense().tolist()
-                if len(cosine) == 2:
-                    named_cosine.append(cosine[1][0])
+            stance_cosine = []
+            head = get_tags(stance['originalHeadline'])
+            body = get_tags(self._original_articles.get(stance['Body ID'])[:255])
+
+            for tag in tags:
+                head_f = filter_pos(head, tag)
+                body_f = filter_pos(body, tag)
+
+                if head_f and body_f:
+                    vect = TfidfVectorizer(min_df=1)
+                    tfidf = vect.fit_transform([head_f,body_f])
+                    cosine = (tfidf * tfidf.T).todense().tolist()
+                    if len(cosine) == 2:
+                        stance_cosine.append(cosine[1][0])
+                    else:
+                        stance_cosine.append(0)
                 else:
-                    named_cosine.append(0)
-            else:
-                named_cosine.append(0)
-            #print stance['Stance'] + ": " + str(named_cosine[-1])
-        named_cosine = [item/max(named_cosine) for item in named_cosine]
+                    stance_cosine.append(0)
+            named_cosine.append(stance_cosine)
         return named_cosine
+
+    def _vader_feature(self):
+        sid = SentimentIntensityAnalyzer()
+        features = []
+
+        for stance in tqdm.tqdm(self._stances):
+            headVader = sid.polarity_scores(stance["Headline"])
+            bodyVader = sid.polarity_scores(sent_tokenize(self._original_articles.get(stance['Body ID']))[0])
+            features.append(abs(headVader['pos']-bodyVader['pos']))
+            features.append(abs(headVader['neg']-bodyVader['neg']))
+        return features
 
     def _get_jaccard_similarity(self):
         """ Get the jaccard similarities for each headline and article body pair. Jaccard similarity is defined as
@@ -196,10 +229,8 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     feature_data = FeatureData('data/competition_test_bodies.csv', 'data/competition_test_stances.csv')
     feature_generator = FeatureGenerator(feature_data.get_clean_articles(), feature_data.get_clean_stances(), feature_data.get_original_articles())
-    features = feature_generator.get_features()
-    feature_matrix = features['feature_matrix']
-    feature_names = features['feature_names']
+    features = feature_generator.get_features("test_features")
 
-    # feature_generator._get_ngrams(3)
-    # feature_generator._get_refuting_words()
-    # X = feature_generator._polarity_feature()
+    feature_data = FeatureData('data/train_bodies.csv', 'data/train_stances.csv')
+    feature_generator = FeatureGenerator(feature_data.get_clean_articles(), feature_data.get_clean_stances(), feature_data.get_original_articles())
+    features = feature_generator.get_features()

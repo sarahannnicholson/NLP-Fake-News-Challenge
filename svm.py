@@ -13,6 +13,7 @@ class SVMModel(object):
            'ngrams',
            'polarity',
            'named',
+           #'vader',
            'jaccard'
         ]
 
@@ -46,20 +47,36 @@ class SVMModel(object):
 
     def precision(self, actual, predicted):
         pairs = zip(actual, predicted)
-        truePositive = np.count_nonzero([x[1] > 0 for x in pairs if x[0] > 0])
-        falsePositive = np.count_nonzero([x[1] > 0 for x in pairs if x[0] == 0])
-        return float(truePositive) / (truePositive + falsePositive + 1)
+        print "Precision"
+        for stance, index in self._stance_map.iteritems():
+            truePositive = np.count_nonzero([x[1] == index for x in pairs if x[0] == index])
+            falsePositive = np.count_nonzero([x[1] == index for x in pairs if x[0] != index])
+            try:
+                print stance + ": " + str(100 * float(truePositive) / (truePositive + falsePositive + 1))
+            except ZeroDivisionError:
+                print "Zero"
 
     def recal(self, actual, predicted):
+        print "Recall"
         pairs = zip(actual, predicted)
-        truePositive = np.count_nonzero([x[1] > 0 for x in pairs if x[0] > 0])
-        falseNegative = np.count_nonzero([x[1] == 0 for x in pairs if x[0] > 0])
-        return float(truePositive) / (truePositive + falseNegative + 1)
+        for stance, index in self._stance_map.iteritems():
+            truePositive = np.count_nonzero([x[1] == index for x in pairs if x[0] == index])
+            falseNegative = np.count_nonzero([x[1] != index for x in pairs if x[0] == index])
+            try:
+                print stance + ": " + str(100 * float(truePositive) / (truePositive + falseNegative + 1))
+            except ZeroDivisionError:
+                print "Zero"
 
     def accuracy(self, actual, predicted):
+        print "Accuracy"
         pairs = zip(actual, predicted)
-        accurate = np.count_nonzero([x[1] == x[0] for x in pairs])
-        return float(accurate)/len(pairs)
+        for stance, index in self._stance_map.iteritems():
+            accurate = np.count_nonzero([x[1] == index and x[1] == x[0] for x in pairs])
+            total = np.count_nonzero([x[0] == index for x in pairs])
+            try:
+                print stance + ": " + str(100 * float(accurate)/total)
+            except ZeroDivisionError:
+                print "Zero"
 
 if __name__ == '__main__':
     model = SVMModel()
@@ -81,6 +98,6 @@ if __name__ == '__main__':
     predicted = model.test_classifier(classifier, X_test, y_test)
 
     print str(model._use_features)
-    print "Precision %f" % model.precision(y_test, predicted)
-    print "Recal %f" % model.recal(y_test, predicted)
-    print "Accuracy %f" % model.accuracy(y_test, predicted)
+    model.precision(y_test, predicted)
+    model.recal(y_test, predicted)
+    model.accuracy(y_test, predicted)

@@ -36,7 +36,8 @@ class FeatureData(object):
         clean_articles = []
         logging.debug('Retrieving original articles...')
         for item in tqdm.tqdm(self.articles):
-            cleaned_article = clean(item['articleBody'])
+            #cleaned_article = clean(item['articleBody'])
+            cleaned_article = item['articleBody'].decode('unicode_escape').encode('ascii', 'ignore')
             clean_articles.append({'articleBody':cleaned_article,
                                    'Body ID': item['Body ID']})
         return {article['Body ID']: article['articleBody'] for article in clean_articles}

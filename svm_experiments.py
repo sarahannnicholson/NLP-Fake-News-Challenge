@@ -28,6 +28,6 @@ if __name__ == '__main__':
     scorer.report_score([LABELS[score_map[e]] for e in y_test],[LABELS[score_map[e]] for e in predicted])
 
     print str(model._use_features)
-    print "Precision %f" % model.precision(y_test, predicted)
-    print "Recal %f" % model.recal(y_test, predicted)
-    print "Accuracy %f" % model.accuracy(y_test, predicted)
+    model.precision(y_test, predicted)
+    model.recal(y_test, predicted)
+    model.accuracy(y_test, predicted)
