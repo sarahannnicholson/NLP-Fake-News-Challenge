@@ -1,0 +1,58 @@
+
+SVM
+		Precision
+		unrelated: 93.085787452     disagree: 0.0    discuss: 65.0943396226    agree: 90.0
+		Recall
+		unrelated: 97.7150537634    disagree: 0.0    discuss: 81.1764705882    agree: 11.6883116883
+		Accuracy
+		unrelated: 97.8465679677    disagree: 0.0    discuss: 81.6568047337    agree: 11.8421052632
+
+NN_classifier = MLPClassifier(solver='lbfgs', alpha=1e-5, hidden_layer_sizes=(15,), random_state=1)
+		Precision
+		unrelated: 97.7272727273   disagree: 0.0    discuss: 65.8436213992    agree: 83.3333333333
+		Recall
+		unrelated: 98.252688172    disagree: 0.0    discuss: 94.1176470588    agree: 12.987012987
+		Accuracy
+		unrelated: 98.3849259758   disagree: 0.0    discuss: 94.674556213     agree: 13.1578947368
+
+NN_classifier = MLPClassifier(solver='lbfgs', alpha=1e-5, hidden_layer_sizes=(30,), random_state=1)
+		Precision
+		unrelated: 97.9919678715    disagree: 0.0    discuss: 65.7142857143    agree: 90.9090909091
+		Recall
+		unrelated: 98.3870967742    disagree: 0.0    discuss: 94.7058823529    agree: 12.987012987
+		Accuracy
+		unrelated: 98.5195154778    disagree: 0.0    discuss: 95.2662721893    agree: 13.1578947368
+
+NN_classifier = MLPClassifier(solver='lbfgs', alpha=0.0001, hidden_layer_sizes=(30,), random_state=1)
+		Precision
+		unrelated: 97.7333333333    disagree: 0.0    discuss: 65.7024793388    agree: 90.9090909091
+		Recall
+		unrelated: 98.5215053763    disagree: 0.0    discuss: 93.5294117647    agree: 12.987012987
+		Accuracy
+		unrelated: 98.6541049798    disagree: 0.0    discuss: 94.0828402367    agree: 13.1578947368
+
+default MLPC parameters
+		Precision
+		unrelated: 98.1233243968    disagree: 0.0    discuss: 65.306122449    agree: 90.9090909091
+		Recall
+		unrelated: 98.3870967742    disagree: 0.0    discuss: 94.1176470588   agree: 12.987012987
+		Accuracy
+		unrelated: 98.5195154778    disagree: 0.0    discuss: 94.674556213    agree: 13.1578947368
+
+NN_classifier = MLPClassifier(solver='adam', alpha=1e-5, hidden_layer_sizes=(15,), random_state=1)
+		Precision
+		unrelated: 97.6             disagree: 0.0     discuss: 65.7024793388     agree: 90.9090909091
+		Recall
+		unrelated: 98.3870967742    disagree: 0.0     discuss: 93.5294117647     agree: 12.987012987
+		Accuracy
+		unrelated: 98.5195154778    disagree: 0.0     discuss: 94.0828402367     agree: 13.1578947368
+
+
+
+
+
+
+
+
+
+#
