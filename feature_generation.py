@@ -103,6 +103,25 @@ class FeatureGenerator(object):
         header = ','.join(feature_headers)
         np.savetxt(fname=output_path, X=feature, delimiter=',', header=header, comments='')
 
+    @staticmethod
+    def combine_train_and_test_features():
+        """ Concatenates training and competition features into single files under the 'combined_features'
+        directory. """
+        for feature in os.listdir('features'):
+            with open(os.path.join('features', feature), 'r+') as f_train, open(os.path.join('test_features', feature), 'r+') as f_test:
+                f_train.flush()
+                f_test.flush()
+                os.fsync(f_train.fileno())
+                os.fsync(f_test.fileno())
+
+                with open(os.path.join('combined_features', feature), 'wb') as f_combined:
+                    for line in f_train:
+                        f_combined.write(line)
+
+                    for line in f_test:
+                        f_combined.write(line)
+
+
     def _get_ngrams(self):
         """Retrieves counts for ngrams of the article title in the article itself, from one up to size max_ngram_size.
         Returns a list of lists, each containing the counts for a different size of ngram."""
@@ -226,11 +245,14 @@ class FeatureGenerator(object):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
-    feature_data = FeatureData('data/competition_test_bodies.csv', 'data/competition_test_stances.csv')
-    feature_generator = FeatureGenerator(feature_data.get_clean_articles(), feature_data.get_clean_stances(), feature_data.get_original_articles())
-    features = feature_generator.get_features("test_features")
+    # logging.basicConfig(level=logging.DEBUG)
+    # feature_data = FeatureData('data/competition_test_bodies.csv', 'data/competition_test_stances.csv')
+    # feature_generator = FeatureGenerator(feature_data.get_clean_articles(), feature_data.get_clean_stances(), feature_data.get_original_articles())
+    # features = feature_generator.get_features("test_features")
+    #
+    # feature_data = FeatureData('data/train_bodies.csv', 'data/train_stances.csv')
+    # feature_generator = FeatureGenerator(feature_data.get_clean_articles(), feature_data.get_clean_stances(), feature_data.get_original_articles())
+    # features = feature_generator.get_features()
 
-    feature_data = FeatureData('data/train_bodies.csv', 'data/train_stances.csv')
-    feature_generator = FeatureGenerator(feature_data.get_clean_articles(), feature_data.get_clean_stances(), feature_data.get_original_articles())
-    features = feature_generator.get_features()
+    # Concatenate competition and training features to get combined files
+    FeatureGenerator.combine_train_and_test_features()
