@@ -118,6 +118,7 @@ class FeatureGenerator(object):
                     for line in f_train:
                         f_combined.write(line)
 
+                    next(f_test)
                     for line in f_test:
                         f_combined.write(line)
 
