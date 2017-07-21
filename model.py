@@ -2,6 +2,7 @@ import numpy as np
 from sklearn import svm, preprocessing
 from sklearn.neural_network import MLPClassifier
 from sklearn.neural_network import MLPRegressor
+from sklearn.model_selection import StratifiedKFold
 
 from feature_generation import FeatureGenerator
 from FeatureData import FeatureData
@@ -56,35 +57,90 @@ class Model(object):
 def precision(actual, predicted, stance_map):
     pairs = zip(actual, predicted)
     print "Precision"
+    scores = {stance: None for stance in stance_map.iterkeys()}
     for stance, index in stance_map.iteritems():
         truePositive = np.count_nonzero([x[1] == index for x in pairs if x[0] == index])
         falsePositive = np.count_nonzero([x[1] == index for x in pairs if x[0] != index])
         try:
-            print stance + ": " + str(100 * float(truePositive) / (truePositive + falsePositive + 1))
+            precision = 100 * float(truePositive) / (truePositive + falsePositive + 1)
+            scores[stance] = precision
+            print stance + ": " + str(precision)
         except ZeroDivisionError:
             print "Zero"
+
+    return scores
 
 def recal(actual, predicted, stance_map):
     print "Recall"
     pairs = zip(actual, predicted)
+    scores = {stance: None for stance in stance_map.iterkeys()}
     for stance, index in stance_map.iteritems():
         truePositive = np.count_nonzero([x[1] == index for x in pairs if x[0] == index])
         falseNegative = np.count_nonzero([x[1] != index for x in pairs if x[0] == index])
         try:
-            print stance + ": " + str(100 * float(truePositive) / (truePositive + falseNegative + 1))
+            recall = 100 * float(truePositive) / (truePositive + falseNegative + 1)
+            scores[stance] = recall
+            print stance + ": " + str(recall)
         except ZeroDivisionError:
             print "Zero"
+
+    return scores
 
 def accuracy(actual, predicted, stance_map):
     print "Accuracy"
     pairs = zip(actual, predicted)
+    scores = {stance: None for stance in stance_map.iterkeys()}
     for stance, index in stance_map.iteritems():
         accurate = np.count_nonzero([x[1] == index and x[1] == x[0] for x in pairs])
         total = np.count_nonzero([x[0] == index for x in pairs])
         try:
-            print stance + ": " + str(100 * float(accurate)/total)
+            accuracy = 100 * float(accurate)/total
+            scores[stance] = accuracy
+            print stance + ": " + str(accuracy)
         except ZeroDivisionError:
             print "Zero"
+
+    return scores
+
+def stratify(X, y):
+    """ Returns X and y matrices with an even distribution of each class """
+    # Find the indices of each class
+    disagree_indices = np.where(y == 3)[0]
+    agree_indices = np.where(y == 2)[0]
+    discuss_indices = np.where(y == 1)[0]
+    unrelated_indices = np.where(y == 0)[0]
+
+    num_disagree = disagree_indices.shape[0]
+
+    # Take the first num_disagrees entries for each class
+    reduced_agree_indices = agree_indices[:num_disagree]
+    reduced_discuss_indices = discuss_indices[:num_disagree]
+    reduced_unrelated_indices = unrelated_indices[:num_disagree]
+
+    # Recombine into stratified X and y matrices
+    X_stratified = np.concatenate([X[disagree_indices], X[reduced_agree_indices], X[reduced_discuss_indices],
+                                   X[reduced_unrelated_indices]], axis=0)
+    y_stratified = np.concatenate([y[disagree_indices], y[reduced_agree_indices], y[reduced_discuss_indices],
+                                   y[reduced_unrelated_indices]], axis=0)
+
+    return {'X': X_stratified, 'y': y_stratified}
+
+def score_average(scores):
+    """ Used to calculate score averages resulting from kfold validation. """
+    # Calculate averages for precision, recall, and accuracy
+    score_sums = {stance: 0 for stance in model._stance_map.iterkeys()}
+    invalid_counts = {stance: 0 for stance in
+                      model._stance_map.iterkeys()}  # Count number of zero division errors and exclude from averages
+
+    for result in scores:
+        for stance in model._stance_map.iterkeys():
+            if result[stance] != None:
+                score_sums[stance] += result[stance]
+            else:
+                invalid_counts[stance] += 1
+
+    # Dictionary containing average scores for each stance
+    return {stance: score_sums[stance]/(len(scores) - invalid_counts[stance]) for stance in model._stance_map.iterkeys()}
 
 if __name__ == '__main__':
     # SVM Model
@@ -93,24 +149,62 @@ if __name__ == '__main__':
     # NN model
     #model = Model('nn')
 
-    data = model.get_data('data/train_bodies.csv', 'data/train_stances.csv', 'features')
-    testNum = 1000
+    data = model.get_data('data/combined_bodies.csv', 'data/combined_stances.csv', 'combined_features')
 
-    X_test = data['X'][-testNum:]
-    X_train = data['X'][:-testNum]
+    X = data['X']
+    y = data['y']
 
-    Only_R_UR = False
-    if Only_R_UR:
-        y_test = model.related_unrelated(data['y'][-testNum:])
-        y_train = model.related_unrelated(data['y'][:-testNum])
+    stratify_data = True
+    if stratify_data:
+        stratified = stratify(X, y)
+        X = stratified['X']
+        y = stratified['y']
+
+    kfold = True
+    if kfold:
+        precision_scores = []
+        recall_scores = []
+        accuracy_scores = []
+
+        kfold = StratifiedKFold(n_splits=10)
+
+        for train_indices, test_indices in kfold.split(X, y):
+            X_train = X[train_indices]
+            X_test = X[test_indices]
+            y_train = y[train_indices]
+            y_test = y[test_indices]
+
+            classifier = model.get_trained_classifier(X_train, y_train)
+            predicted = model.test_classifier(classifier, X_train, y_train)
+
+            print str(model._use_features)
+            precision_scores.append(precision(y, predicted, model._stance_map))
+            recall_scores.append(recal(y, predicted, model._stance_map))
+            accuracy_scores.append(accuracy(y, predicted, model._stance_map))
+
+        print ''
+        print 'Kfold precision averages: ' + str(score_average(precision_scores))
+        print 'Kfold recall averages: ' + str(score_average(recall_scores))
+        print 'Kfold accuracy averages: ' + str(score_average(accuracy_scores))
     else:
-        y_test = data['y'][-testNum:]
-        y_train = data['y'][:-testNum]
+        data = model.get_data('data/combined_bodies.csv', 'data/combined_stances.csv', 'features')
+        testNum = 1000
 
-    classifier = model.get_trained_classifier(X_train, y_train)
-    predicted = model.test_classifier(classifier, X_test, y_test)
+        X_test = data['X'][-testNum:]
+        X_train = data['X'][:-testNum]
 
-    print str(model._use_features)
-    precision(y_test, predicted, model._stance_map)
-    recal(y_test, predicted, model._stance_map)
-    accuracy(y_test, predicted, model._stance_map)
+        Only_R_UR = False
+        if Only_R_UR:
+            y_test = model.related_unrelated(data['y'][-testNum:])
+            y_train = model.related_unrelated(data['y'][:-testNum])
+        else:
+            y_test = data['y'][-testNum:]
+            y_train = data['y'][:-testNum]
+
+        classifier = model.get_trained_classifier(X_train, y_train)
+        predicted = model.test_classifier(classifier, X_test, y_test)
+
+        print str(model._use_features)
+        precision(y_test, predicted, model._stance_map)
+        recal(y_test, predicted, model._stance_map)
+        accuracy(y_test, predicted, model._stance_map)

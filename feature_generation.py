@@ -246,14 +246,14 @@ class FeatureGenerator(object):
 
 
 if __name__ == '__main__':
-    # logging.basicConfig(level=logging.DEBUG)
-    # feature_data = FeatureData('data/competition_test_bodies.csv', 'data/competition_test_stances.csv')
-    # feature_generator = FeatureGenerator(feature_data.get_clean_articles(), feature_data.get_clean_stances(), feature_data.get_original_articles())
-    # features = feature_generator.get_features("test_features")
-    #
-    # feature_data = FeatureData('data/train_bodies.csv', 'data/train_stances.csv')
-    # feature_generator = FeatureGenerator(feature_data.get_clean_articles(), feature_data.get_clean_stances(), feature_data.get_original_articles())
-    # features = feature_generator.get_features()
+    logging.basicConfig(level=logging.DEBUG)
+    feature_data = FeatureData('data/competition_test_bodies.csv', 'data/competition_test_stances.csv')
+    feature_generator = FeatureGenerator(feature_data.get_clean_articles(), feature_data.get_clean_stances(), feature_data.get_original_articles())
+    features = feature_generator.get_features("test_features")
+
+    feature_data = FeatureData('data/train_bodies.csv', 'data/train_stances.csv')
+    feature_generator = FeatureGenerator(feature_data.get_clean_articles(), feature_data.get_clean_stances(), feature_data.get_original_articles())
+    features = feature_generator.get_features()
 
     # Concatenate competition and training features to get combined files
     FeatureGenerator.combine_train_and_test_features()
