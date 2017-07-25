@@ -1,5 +1,5 @@
 """Methods for generating each feature can be added to the FeatureGenerator class."""
-
+from __future__ import division
 import logging
 import os
 
@@ -13,6 +13,10 @@ from nltk import word_tokenize, pos_tag, ne_chunk, sent_tokenize
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from nltk.chunk import tree2conlltags
 from nltk.stem import PorterStemmer
+
+from textacy.doc import Doc
+from textacy.extract import direct_quotations
+import spacy
 
 
 class FeatureGenerator(object):
@@ -50,7 +54,7 @@ class FeatureGenerator(object):
         feature_names = []
         features = []
 
-        if False:
+        if True:
             logging.debug('Retrieving headline ngrams...')
             ngrams = np.array(self._get_ngrams())
             features.append(ngrams)
@@ -88,12 +92,25 @@ class FeatureGenerator(object):
             feature_names.append('vader_neg')
             self._feature_to_csv(vader, ['vader'], features_directory+'/vader.csv')
 
-        if False:
+        if True:
             logging.debug('Retrieving jaccard similarities...')
             jaccard = np.array(self._get_jaccard_similarity()).reshape(len(self._stances), 1)
             features.append(jaccard)
             feature_names.append('jaccard_similarity')
             self._feature_to_csv(jaccard, ['jaccard_similarity'], features_directory+'/jaccard_similarity.csv')
+
+        if True:
+            logging.debug('Retrieving quote analysis...')
+            quotes = np.array(self._get_quotes()).reshape(len(self._stances), 1)
+            features.append(quotes)
+            feature_names.append('quote_analysis')
+            self._feature_to_csv(quotes, ['quote_analysis'], features_directory+'/quote_analysis.csv')
+
+        if True:
+            lengths = np.array(self._length_feature()).reshape(len(self._stances), 1)
+            features.append(lengths)
+            feature_names.append('lengths')
+            self._feature_to_csv(lengths, ['lengths'], features_directory + '/lengths.csv')
 
         return {'feature_matrix': np.concatenate(features, axis=1), 'feature_names': feature_names}
 
@@ -189,7 +206,7 @@ class FeatureGenerator(object):
 
     def _named_entity_feature(self):
         """ Retrieves a list of Named Entities from the Headline and Body.
-        Returns a list containing the cosine simmilarity between the counts of the named entities """
+        Returns a list containing the cosine similarity between the counts of the named entities """
         stemmer = PorterStemmer()
         def get_tags(text):
             return pos_tag(word_tokenize(text.encode('ascii', 'ignore')))
@@ -243,6 +260,36 @@ class FeatureGenerator(object):
             similarities.append(jaccard)
 
         return similarities
+
+    def _get_quotes(self):
+        quote_count = []
+        for stance in tqdm.tqdm(self._stances):
+            body = self._original_articles.get(stance['Body ID']).decode('utf-8', 'replace')
+            doc = Doc(content=body, lang=u'en')
+            quotes = direct_quotations(doc)
+            quote_counter = 0
+
+            for q in quotes:
+                quote_counter = quote_counter + len(q[2])
+            quote_counter = quote_counter / len(body)
+            quote_count.append(quote_counter)
+
+        return quote_count
+
+    def _length_feature(self):
+        lengths = []
+        for stance in tqdm.tqdm(self._stances):
+            lengths.append(len(self._original_articles.get(stance['Body ID'])))
+        return lengths
+
+    # WIP
+    # def _bias_feature(self):
+    #
+    #     for stance in tqdm.tqdm(self._stances):
+    #         # Search the article text and count biased words
+    #         vectorizer = CountVectorizer(input=self._articles[stance['Body ID']], ngram_range=(1, 1), binary=False)
+    #         vocab = vectorizer.get_feature_names()
+
 
 
 if __name__ == '__main__':

@@ -13,12 +13,14 @@ class Model(object):
         self._stance_map = {'unrelated': 0, 'discuss': 1, 'agree': 2, 'disagree': 3}
         self._model_type = modelType
         self._use_features= [
-           'refuting',
+           #'refuting',
            'ngrams',
-           'polarity',
+           #'polarity',
            'named',
            #'vader',
-           'jaccard'
+           'jaccard',
+           'quote_analysis',
+            'lengths'
         ]
 
     def get_data(self, body_file, stance_file, features_directory):
