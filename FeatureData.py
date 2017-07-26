@@ -11,7 +11,7 @@ import tqdm
 class FeatureData(object):
     def __init__(self, article_file_path, stances_file_path):
         self.number_of_classes = 4
-        self.classes = ["Agrees", "Disagrees", "Discusses", "Unrelated"]
+        self.classes = ['agree', 'disagree', 'discuss', 'unrelated']
         self.articles = self._get_articles(article_file_path)  # list of dictionaries
         self.stances = self._get_stances(stances_file_path)
         self.number_of_stances = len(self.stances)
