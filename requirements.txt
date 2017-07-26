@@ -1,3 +1,4 @@
+gensim
 tqdm
 sklearn
 numpy

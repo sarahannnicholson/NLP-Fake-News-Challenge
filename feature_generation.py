@@ -1,12 +1,14 @@
 """Methods for generating each feature can be added to the FeatureGenerator class."""
 
 import logging
-import os
+import os, re, string, tqdm, nltk.data
 
 import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
-import tqdm
-
+from gensim import models
+from gensim.models.phrases import Phraser
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.preprocessing import normalize
 from FeatureData import FeatureData, tokenize_text
 
 from nltk import word_tokenize, pos_tag, ne_chunk, sent_tokenize
@@ -58,6 +60,11 @@ class FeatureGenerator(object):
             feature_names.append(ngram_headings)
             self._feature_to_csv(ngrams, ngram_headings, features_directory+'/ngrams.csv')
 
+        if Flase:
+            logging.debug('Retrieving word2Vec...')
+            words = np.array(self._get_word2vec())
+
+
         if False:
             logging.debug('Retrieving refuting words...')
             refuting = np.array(self._get_refuting_words())
@@ -73,14 +80,14 @@ class FeatureGenerator(object):
             feature_names.append('article_polarity')
             self._feature_to_csv(polarity, ['headline_polarity', 'article_polarity'], features_directory+'/polarity.csv')
 
-        if True:
+        if False:
             logging.debug('Retrieving named entity cosine...')
             named_cosine = np.array(self._named_entity_feature()).reshape(len(self._stances), 1)
             features.append(named_cosine)
             feature_names.append('named_cosine')
             self._feature_to_csv(named_cosine, ['named_cosine'], features_directory+'/named_cosine.csv')
 
-        if True:
+        if False:
             logging.debug('Retrieving VADER...')
             vader = np.array(self._vader_feature()).reshape(len(self._stances), 2)
             features.append(vader)
@@ -153,8 +160,46 @@ class FeatureGenerator(object):
             standardized_counts = [1.0*count/len(stance['Headline'].split()) for count in aggregated_counts]
 
             ngrams.append(standardized_counts)
+            print ngrams
 
         return ngrams
+
+    def _get_word2vec(self):
+        # Gather sentences
+        tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
+        all_words = []; atricle_words = []
+
+        for stance in tqdm.tqdm(self._stances):
+            if stance['Stance'] == 'unrelated':
+                pass
+            body_words = []; headline_words = []
+            headline = tokenizer.tokenize(stance['originalHeadline'])
+            body = tokenizer.tokenize(self._original_articles[stance['Body ID']])[:4]
+            for s in headline:
+                s = word_tokenize(s)
+                headline_words = headline_words + s
+                all_words.append(s)
+            for s in body:
+                s = word_tokenize(s)
+                body_words = body_words + s
+                all_words.append(s)
+            atricle_words.append([headline_words, body_words])
+
+        # Train Word2Vec
+        model = models.Word2Vec(all_words, size=100, min_count=1)
+
+        # Generate sentence vectors
+        for headline, body in atricle_words:
+            print model.wv['computer']
+            print model.wv['system']
+            print sum([model.wv['computer'], model.wv['system']])
+            h_vector = sum([model.wv[word] for word in headline])
+            b_vector = sum([model.wv[word] for word in body])
+            print h_vector
+            print "\n\n", cosine_similarity(h_vector, b_vector)
+            break
+
+        return []
 
     def _get_refuting_words(self):
         """ Retrieves headlines of the articles and indicates a count of each of the refuting words in the headline.
@@ -243,7 +288,6 @@ class FeatureGenerator(object):
             similarities.append(jaccard)
 
         return similarities
-
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
