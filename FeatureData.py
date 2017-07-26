@@ -1,6 +1,4 @@
-import csv
-import logging
-import re
+import csv, logging, re, nltk
 
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize

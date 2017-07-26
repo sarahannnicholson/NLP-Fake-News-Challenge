@@ -1,7 +1,7 @@
 """Methods for generating each feature can be added to the FeatureGenerator class."""
 from __future__ import division
 import logging
-import os, re, string, tqdm, nltk.data
+import os, re, string, tqdm, nltk
 
 import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
@@ -16,9 +16,9 @@ from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from nltk.chunk import tree2conlltags
 from nltk.stem import PorterStemmer
 
-from textacy.doc import Doc
-from textacy.extract import direct_quotations
-import spacy
+# from textacy.doc import Doc
+# from textacy.extract import direct_quotations
+# import spacy
 
 
 class FeatureGenerator(object):
@@ -64,7 +64,7 @@ class FeatureGenerator(object):
             feature_names.append(ngram_headings)
             self._feature_to_csv(ngrams, ngram_headings, features_directory+'/ngrams.csv')
 
-        if Flase:
+        if True:
             logging.debug('Retrieving word2Vec...')
             words = np.array(self._get_word2vec())
 
@@ -99,21 +99,21 @@ class FeatureGenerator(object):
             feature_names.append('vader_neg')
             self._feature_to_csv(vader, ['vader'], features_directory+'/vader.csv')
 
-        if True:
+        if False:
             logging.debug('Retrieving jaccard similarities...')
             jaccard = np.array(self._get_jaccard_similarity()).reshape(len(self._stances), 1)
             features.append(jaccard)
             feature_names.append('jaccard_similarity')
             self._feature_to_csv(jaccard, ['jaccard_similarity'], features_directory+'/jaccard_similarity.csv')
 
-        if True:
+        if False:
             logging.debug('Retrieving quote analysis...')
             quotes = np.array(self._get_quotes()).reshape(len(self._stances), 1)
             features.append(quotes)
             feature_names.append('quote_analysis')
             self._feature_to_csv(quotes, ['quote_analysis'], features_directory+'/quote_analysis.csv')
 
-        if True:
+        if False:
             lengths = np.array(self._length_feature()).reshape(len(self._stances), 1)
             features.append(lengths)
             feature_names.append('lengths')
@@ -183,7 +183,7 @@ class FeatureGenerator(object):
 
     def _get_word2vec(self):
         # Gather sentences
-        tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
+        tokenizer = nltk.download('punkt')
         all_words = []; atricle_words = []
 
         for stance in tqdm.tqdm(self._stances):
@@ -205,6 +205,7 @@ class FeatureGenerator(object):
         # Train Word2Vec
         model = models.Word2Vec(all_words, size=100, min_count=1)
 
+        cosine_similarities = []
         # Generate sentence vectors
         for headline, body in atricle_words:
             print model.wv['computer']
@@ -213,10 +214,9 @@ class FeatureGenerator(object):
             h_vector = sum([model.wv[word] for word in headline])
             b_vector = sum([model.wv[word] for word in body])
             print h_vector
-            print "\n\n", cosine_similarity(h_vector, b_vector)
-            break
+            cosine_similarities.append(cosine_similarity(h_vector, b_vector))
 
-        return []
+        return cosine_similarities
 
     def _get_refuting_words(self):
         """ Retrieves headlines of the articles and indicates a count of each of the refuting words in the headline.
