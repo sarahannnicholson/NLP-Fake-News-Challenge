@@ -16,9 +16,9 @@ from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from nltk.chunk import tree2conlltags
 from nltk.stem import PorterStemmer
 
-# from textacy.doc import Doc
-# from textacy.extract import direct_quotations
-# import spacy
+from textacy.doc import Doc
+from textacy.extract import direct_quotations
+import spacy
 
 
 class FeatureGenerator(object):
@@ -56,7 +56,7 @@ class FeatureGenerator(object):
         feature_names = []
         features = []
 
-        if True:
+        if False:
             logging.debug('Retrieving headline ngrams...')
             ngrams = np.array(self._get_ngrams())
             features.append(ngrams)
@@ -66,7 +66,10 @@ class FeatureGenerator(object):
 
         if True:
             logging.debug('Retrieving word2Vec...')
-            words = np.array(self._get_word2vec())
+            word2Vec = np.array(self._get_word2vec())
+            features.append(word2Vec)
+            feature_names.append("word2Vec")
+            self._feature_to_csv(word2Vec, ["word2Vec"], features_directory+'/ngrams.csv')
 
 
         if False:
@@ -183,7 +186,7 @@ class FeatureGenerator(object):
 
     def _get_word2vec(self):
         # Gather sentences
-        tokenizer = nltk.download('punkt')
+        tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
         all_words = []; atricle_words = []
 
         for stance in tqdm.tqdm(self._stances):
@@ -208,12 +211,8 @@ class FeatureGenerator(object):
         cosine_similarities = []
         # Generate sentence vectors
         for headline, body in atricle_words:
-            print model.wv['computer']
-            print model.wv['system']
-            print sum([model.wv['computer'], model.wv['system']])
             h_vector = sum([model.wv[word] for word in headline])
             b_vector = sum([model.wv[word] for word in body])
-            print h_vector
             cosine_similarities.append(cosine_similarity(h_vector, b_vector))
 
         return cosine_similarities
