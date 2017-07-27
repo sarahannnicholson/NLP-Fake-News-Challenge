@@ -12,7 +12,7 @@ class Model(object):
     def __init__(self, modelType):
         self._stance_map = {'unrelated': 0, 'discuss': 1, 'agree': 2, 'disagree': 3}
         self._model_type = modelType
-        self._use_features= [
+        self._features_for_X1= [
            #'refuting',
            'ngrams',
            #'polarity',
@@ -22,10 +22,21 @@ class Model(object):
            'quote_analysis',
             'lengths'
         ]
+        self._features_for_X2 = [
+            # 'refuting',
+            'ngrams',
+            # 'polarity',
+            'named',
+            # 'vader',
+            'jaccard',
+            'quote_analysis',
+            'lengths'
+        ]
 
     def get_data(self, body_file, stance_file, features_directory):
         feature_data = FeatureData(body_file, stance_file)
-        X_train = FeatureGenerator.get_features_from_file(use=self._use_features, features_directory=features_directory)
+        X_train = FeatureGenerator.get_features_from_file(use=self._features_for_X1,
+                                                           features_directory=features_directory)
         y_train = np.asarray([self._stance_map[stance['Stance']] for stance in feature_data.stances])
 
         # Scale features to range[0, 1] to prevent larger features from dominating smaller ones
@@ -49,12 +60,9 @@ class Model(object):
         return classifier
 
 
-    def test_classifier(self, classifier, X_test, y_test):
-        predicted = []
-        for i, stance in enumerate(y_test):
-            predicted.append(classifier.predict([X_test[i]])[0])
+    def test_classifier(self, classifier, X_test):
+        return classifier.predict(X_test)
 
-        return predicted
 
 def precision(actual, predicted, stance_map):
     pairs = zip(actual, predicted)
@@ -130,83 +138,91 @@ def stratify(X, y):
 def score_average(scores):
     """ Used to calculate score averages resulting from kfold validation. """
     # Calculate averages for precision, recall, and accuracy
-    score_sums = {stance: 0 for stance in model._stance_map.iterkeys()}
+    score_sums = {stance: 0 for stance in model1._stance_map.iterkeys()}
     invalid_counts = {stance: 0 for stance in
-                      model._stance_map.iterkeys()}  # Count number of zero division errors and exclude from averages
+                      model1._stance_map.iterkeys()}  # Count number of zero division errors and exclude from averages
 
     for result in scores:
-        for stance in model._stance_map.iterkeys():
+        for stance in model1._stance_map.iterkeys():
             if result[stance] != None:
                 score_sums[stance] += result[stance]
             else:
                 invalid_counts[stance] += 1
 
     # Dictionary containing average scores for each stance
-    return {stance: score_sums[stance]/(len(scores) - invalid_counts[stance]) for stance in model._stance_map.iterkeys()}
+    return {stance: score_sums[stance]/(len(scores) - invalid_counts[stance]) for stance in model1._stance_map.iterkeys()}
 
 if __name__ == '__main__':
     # SVM Model
-    model = Model('svm')
+    model1 = Model('svm')
 
     # NN model
-    #model = Model('nn')
+    model2 = Model('nn')
 
-    data = model.get_data('data/combined_bodies.csv', 'data/combined_stances.csv', 'combined_features')
+    data = model1.get_data('data/combined_bodies.csv', 'data/combined_stances.csv', 'combined_features')
 
-    X = data['X']
-    y = data['y']
+    X1 = data['X']
+    y1 = data['y']
 
     stratify_data = True
     if stratify_data:
-        stratified = stratify(X, y)
-        X = stratified['X']
-        y = stratified['y']
+        stratified = stratify(X1, y1)
+        X1 = stratified['X']
+        y1 = stratified['y']
 
-    kfold = True
-    if kfold:
-        precision_scores = []
-        recall_scores = []
-        accuracy_scores = []
+    ##
+    precision_scores = []
+    recall_scores = []
+    accuracy_scores = []
 
-        kfold = StratifiedKFold(n_splits=10)
+    kfold = StratifiedKFold(n_splits=10)
+    for train_indices, test_indices in kfold.split(X1, y1):
+        X1_train = X1[train_indices]
+        y1_train = y1[train_indices]
 
-        for train_indices, test_indices in kfold.split(X, y):
-            X_train = X[train_indices]
-            X_test = X[test_indices]
-            y_train = y[train_indices]
-            y_test = y[test_indices]
+        # remove rows of the unrelated class for X2_train and y2_train
+        mask = np.ones(len(X1_train), dtype=bool)
+        unrelated_rows = []
+        for i, stance in enumerate(y1_train):
+            if stance == 0:
+                unrelated_rows.append(i)
+        mask[unrelated_rows] = False
 
-            classifier = model.get_trained_classifier(X_train, y_train)
-            predicted = model.test_classifier(classifier, X_train, y_train)
+        X2_train = X1_train[mask]
+        y2_train = y1_train[mask]
+        X_test = X1[test_indices]
+        y_test = y1[test_indices]
 
-            print str(model._use_features)
-            precision_scores.append(precision(y, predicted, model._stance_map))
-            recall_scores.append(recal(y, predicted, model._stance_map))
-            accuracy_scores.append(accuracy(y, predicted, model._stance_map))
+        # phase 1: SVM classifier for unrelated/related classification
+        # phase 2: Neural Net Classifier for agree, disagree, discuss
+        SVM_classifier = model1.get_trained_classifier(X1_train, y1_train)
+        NN_classifier = model2.get_trained_classifier(X2_train, y2_train)
+        y_predicted = model1.test_classifier(SVM_classifier, X_test)
 
-        print ''
-        print 'Kfold precision averages: ' + str(score_average(precision_scores))
-        print 'Kfold recall averages: ' + str(score_average(recall_scores))
-        print 'Kfold accuracy averages: ' + str(score_average(accuracy_scores))
-    else:
-        data = model.get_data('data/combined_bodies.csv', 'data/combined_stances.csv', 'features')
-        testNum = 1000
+        mask = np.ones(len(y_predicted), dtype=bool)
+        related_rows = []
+        for i, stance in enumerate(y_predicted):
+            if stance == 0:
+                related_rows.append(i)
+        mask[related_rows] = False
 
-        X_test = data['X'][-testNum:]
-        X_train = data['X'][:-testNum]
+        X2_test = X_test[mask]
+        y2_predicted = model2.test_classifier(NN_classifier, X2_test)
 
-        Only_R_UR = False
-        if Only_R_UR:
-            y_test = model.related_unrelated(data['y'][-testNum:])
-            y_train = model.related_unrelated(data['y'][:-testNum])
-        else:
-            y_test = data['y'][-testNum:]
-            y_train = data['y'][:-testNum]
+        # add agree, disagree, discuss results back into y_predicted
+        current_index = 0
+        for i, stance in enumerate(y_predicted):
+            if stance != 0:
+                y_predicted[i] = y2_predicted[current_index]
+                current_index += 1
 
-        classifier = model.get_trained_classifier(X_train, y_train)
-        predicted = model.test_classifier(classifier, X_test, y_test)
 
-        print str(model._use_features)
-        precision(y_test, predicted, model._stance_map)
-        recal(y_test, predicted, model._stance_map)
-        accuracy(y_test, predicted, model._stance_map)
+        precision_scores.append(precision(y_test, y_predicted, model1._stance_map))
+        recall_scores.append(recal(y_test, y_predicted, model1._stance_map))
+        accuracy_scores.append(accuracy(y_test, y_predicted, model1._stance_map))
+
+    print ''
+    print 'Kfold precision averages: ' + str(score_average(precision_scores))
+    print 'Kfold recall averages: ' + str(score_average(recall_scores))
+    print 'Kfold accuracy averages: ' + str(score_average(accuracy_scores))
+

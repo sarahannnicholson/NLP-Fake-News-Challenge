@@ -79,7 +79,7 @@ class FeatureGenerator(object):
             [feature_names.append(word + '_refuting') for word in self._refuting_words]
             self._feature_to_csv(refuting, self._refuting_words, features_directory+'/refuting.csv')
 
-        if False:
+        if True:
             logging.debug('Retrieving polarity...')
             polarity = np.array(self._polarity_feature())
             features.append(polarity)
