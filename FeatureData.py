@@ -18,7 +18,7 @@ class FeatureData(object):
     def get_clean_articles(self):
         """Returns a dictionary with Body ID's as keys and article bodies as values."""
         clean_articles = []
-        logging.debug('Retrieving clean articles...')
+        print 'Retrieving clean articles...'
 
         for item in tqdm.tqdm(self.articles):
             cleaned_article = clean(item['articleBody'])
@@ -32,7 +32,7 @@ class FeatureData(object):
     #We need the stop words for POS tagging to work propperly
     def get_original_articles(self):
         clean_articles = []
-        logging.debug('Retrieving original articles...')
+        print 'Retrieving original articles...'
         for item in tqdm.tqdm(self.articles):
             #cleaned_article = clean(item['articleBody'])
             cleaned_article = item['articleBody'].decode('unicode_escape').encode('ascii', 'ignore')
@@ -44,7 +44,7 @@ class FeatureData(object):
         """Retrieves a list of dictionaries containing the fully cleaned Headlines and the Body ID and Stance for
         each headline."""
         clean_headlines = []
-        logging.debug('Retrieving clean stances...')
+        print 'Retrieving clean stances...'
 
         for item in tqdm.tqdm(self.stances):
             cleaned_headline = clean(item['Headline'])

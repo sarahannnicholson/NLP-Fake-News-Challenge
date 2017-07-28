@@ -57,7 +57,7 @@ class FeatureGenerator(object):
         features = []
 
         if False:
-            logging.debug('Retrieving headline ngrams...')
+            print 'Retrieving headline ngrams...'
             ngrams = np.array(self._get_ngrams())
             features.append(ngrams)
             ngram_headings = [('ngram_' + str(count)) for count in range(1, self._max_ngram_size + 1)]
@@ -65,7 +65,7 @@ class FeatureGenerator(object):
             self._feature_to_csv(ngrams, ngram_headings, features_directory+'/ngrams.csv')
 
         if True:
-            logging.debug('Retrieving word2Vec...')
+            print 'Retrieving word2Vec...'
             word2Vec = np.array(self._get_word2vec())
             features.append(word2Vec)
             feature_names.append("word2Vec")
@@ -73,14 +73,14 @@ class FeatureGenerator(object):
 
 
         if False:
-            logging.debug('Retrieving refuting words...')
+            print 'Retrieving refuting words...'
             refuting = np.array(self._get_refuting_words())
             features.append(refuting)
             [feature_names.append(word + '_refuting') for word in self._refuting_words]
             self._feature_to_csv(refuting, self._refuting_words, features_directory+'/refuting.csv')
 
-        if True:
-            logging.debug('Retrieving polarity...')
+        if False:
+            print 'Retrieving polarity...'
             polarity = np.array(self._polarity_feature())
             features.append(polarity)
             feature_names.append('headline_polarity')
@@ -88,14 +88,14 @@ class FeatureGenerator(object):
             self._feature_to_csv(polarity, ['headline_polarity', 'article_polarity'], features_directory+'/polarity.csv')
 
         if False:
-            logging.debug('Retrieving named entity cosine...')
+            print 'Retrieving named entity cosine...'
             named_cosine = np.array(self._named_entity_feature()).reshape(len(self._stances), 1)
             features.append(named_cosine)
             feature_names.append('named_cosine')
             self._feature_to_csv(named_cosine, ['named_cosine'], features_directory+'/named_cosine.csv')
 
         if False:
-            logging.debug('Retrieving VADER...')
+            print 'Retrieving VADER...'
             vader = np.array(self._vader_feature()).reshape(len(self._stances), 2)
             features.append(vader)
             feature_names.append('vader_pos')
@@ -103,14 +103,14 @@ class FeatureGenerator(object):
             self._feature_to_csv(vader, ['vader'], features_directory+'/vader.csv')
 
         if False:
-            logging.debug('Retrieving jaccard similarities...')
+            print 'Retrieving jaccard similarities...'
             jaccard = np.array(self._get_jaccard_similarity()).reshape(len(self._stances), 1)
             features.append(jaccard)
             feature_names.append('jaccard_similarity')
             self._feature_to_csv(jaccard, ['jaccard_similarity'], features_directory+'/jaccard_similarity.csv')
 
         if False:
-            logging.debug('Retrieving quote analysis...')
+            print 'Retrieving quote analysis...'
             quotes = np.array(self._get_quotes()).reshape(len(self._stances), 1)
             features.append(quotes)
             feature_names.append('quote_analysis')
@@ -209,7 +209,7 @@ class FeatureGenerator(object):
         model = models.Word2Vec(all_words, size=100, min_count=1)
 
         cosine_similarities = []
-        # Generate sentence vectors
+        # Generate sentence vectors and computer cosine similarity
         for headline, body in atricle_words:
             h_vector = sum([model.wv[word] for word in headline])
             b_vector = sum([model.wv[word] for word in body])
@@ -335,7 +335,7 @@ class FeatureGenerator(object):
     #         vocab = vectorizer.get_feature_names()
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.WARNING)
     feature_data = FeatureData('data/competition_test_bodies.csv', 'data/competition_test_stances.csv')
     feature_generator = FeatureGenerator(feature_data.get_clean_articles(), feature_data.get_clean_stances(), feature_data.get_original_articles())
     features = feature_generator.get_features("test_features")
