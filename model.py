@@ -9,30 +9,10 @@ from FeatureData import FeatureData
 
 
 class Model(object):
-    def __init__(self, modelType):
+    def __init__(self, modelType, features):
         self._stance_map = {'unrelated': 0, 'discuss': 1, 'agree': 2, 'disagree': 3}
         self._model_type = modelType
-        self._features_for_X1= [
-           #'refuting',
-           'ngrams',
-           #'polarity',
-           'named',
-           #'vader',
-           'jaccard',
-           'quote_analysis',
-            'lengths'
-        ]
-        self._features_for_X2 = [
-            'refuting',
-            'ngrams',
-            'polarity',
-            'named',
-            'vader',
-            'jaccard',
-            'quote_analysis',
-            'lengths',
-            # 'punctuation_frequency'
-        ]
+        self._features_for_X1 = features
 
     def get_data(self, body_file, stance_file, features_directory):
         feature_data = FeatureData(body_file, stance_file)
@@ -160,22 +140,49 @@ def convert_stance_to_related(y):
     return y
 
 if __name__ == '__main__':
+    features_for_X1 = [
+        # 'refuting',
+        'ngrams',
+        # 'polarity',
+        'named',
+        # 'vader',
+        'jaccard',
+        'quote_analysis',
+        'lengths',
+        'punctuation_frequency'
+    ]
+    features_for_X2 = [
+        #'refuting',
+        #'ngrams',
+        'polarity',
+        'named',
+        'vader',
+        'jaccard',
+        'quote_analysis',
+        'lengths',
+        'punctuation_frequency'
+    ]
     # SVM Model
-    model1 = Model('svm')
-
+    model1 = Model('svm', features_for_X1)
     # NN model
-    model2 = Model('nn')
+    model2 = Model('nn', features_for_X2)
 
     data = model1.get_data('data/combined_bodies.csv', 'data/combined_stances.csv', 'combined_features')
+    data2 = model2.get_data('data/combined_bodies.csv', 'data/combined_stances.csv', 'combined_features')
 
     X1 = data['X']
     y1 = data['y']
+    X2 = data['X']
+    y2 = data['y']
 
     stratify_data = True
     if stratify_data:
         stratified = stratify(X1, y1)
+        stratified2 = stratify(X2, y2)
         X1 = stratified['X']
         y1 = stratified['y']
+        X2 = stratified2['X']
+        y2 = stratified2['y']
 
     ##
     precision_scores = []
@@ -186,6 +193,8 @@ if __name__ == '__main__':
     for train_indices, test_indices in kfold.split(X1, y1):
         X1_train = X1[train_indices]
         y1_train = y1[train_indices]
+        X2_train = X2[train_indices]
+        y2_train = y2[train_indices]
 
         # remove rows of the unrelated class for X2_train and y2_train
         mask = np.ones(len(X1_train), dtype=bool)
@@ -195,8 +204,8 @@ if __name__ == '__main__':
                 unrelated_rows.append(i)
         mask[unrelated_rows] = False
 
-        X2_train = X1_train[mask]
-        y2_train = y1_train[mask]
+        X2_train = X2_train[mask]
+        y2_train = y2_train[mask]
         X_test = X1[test_indices]
         y_test = y1[test_indices]
 
