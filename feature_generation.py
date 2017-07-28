@@ -71,7 +71,6 @@ class FeatureGenerator(object):
             feature_names.append("word2Vec")
             self._feature_to_csv(word2Vec, ["word2Vec"], features_directory+'/ngrams.csv')
 
-
         if False:
             print 'Retrieving refuting words...'
             refuting = np.array(self._get_refuting_words())
@@ -213,7 +212,7 @@ class FeatureGenerator(object):
         for headline, body in atricle_words:
             h_vector = sum([model.wv[word] for word in headline])
             b_vector = sum([model.wv[word] for word in body])
-            cosine_similarities.append(cosine_similarity(h_vector, b_vector))
+            cosine_similarities.append(cosine_similarity(h_vector.reshape(1,-1), b_vector.reshape(1,-1)))
 
         return cosine_similarities
 
