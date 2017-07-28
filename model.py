@@ -23,11 +23,11 @@ class Model(object):
             'lengths'
         ]
         self._features_for_X2 = [
-            # 'refuting',
+            'refuting',
             'ngrams',
-            # 'polarity',
+            'polarity',
             'named',
-            # 'vader',
+            'vader',
             'jaccard',
             'quote_analysis',
             'lengths'
@@ -152,6 +152,12 @@ def score_average(scores):
     # Dictionary containing average scores for each stance
     return {stance: score_sums[stance]/(len(scores) - invalid_counts[stance]) for stance in model1._stance_map.iterkeys()}
 
+def convert_stance_to_related(y):
+    for stance, i in enumerate(y):
+        if stance != 0:
+            y[i] = 4
+    return y
+
 if __name__ == '__main__':
     # SVM Model
     model1 = Model('svm')
@@ -195,7 +201,7 @@ if __name__ == '__main__':
 
         # phase 1: SVM classifier for unrelated/related classification
         # phase 2: Neural Net Classifier for agree, disagree, discuss
-        SVM_classifier = model1.get_trained_classifier(X1_train, y1_train)
+        SVM_classifier = model1.get_trained_classifier(X1_train, convert_stance_to_related(y1_train))
         NN_classifier = model2.get_trained_classifier(X2_train, y2_train)
         y_predicted = model1.test_classifier(SVM_classifier, X_test)
 
