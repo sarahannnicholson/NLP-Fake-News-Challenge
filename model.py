@@ -30,7 +30,8 @@ class Model(object):
             'vader',
             'jaccard',
             'quote_analysis',
-            'lengths'
+            'lengths',
+            # 'punctuation_frequency'
         ]
 
     def get_data(self, body_file, stance_file, features_directory):

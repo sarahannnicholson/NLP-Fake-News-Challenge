@@ -66,10 +66,10 @@ class FeatureGenerator(object):
 
         if True:
             print 'Retrieving word2Vec...'
-            word2Vec = np.array(self._get_word2vec())
+            word2Vec = np.array(self._get_word2vec()).reshape(len(self._stances), 1)
             features.append(word2Vec)
             feature_names.append("word2Vec")
-            self._feature_to_csv(word2Vec, ["word2Vec"], features_directory+'/ngrams.csv')
+            self._feature_to_csv(word2Vec, ["word2Vec"], features_directory + '/ngrams.csv')
 
         if False:
             print 'Retrieving refuting words...'
@@ -120,6 +120,14 @@ class FeatureGenerator(object):
             features.append(lengths)
             feature_names.append('lengths')
             self._feature_to_csv(lengths, ['lengths'], features_directory + '/lengths.csv')
+
+        if True:
+            logging.debug('Retrieving punctuation frequencies...')
+            punctuation_frequencies = np.array(self._get_punctuation_frequency()).reshape(len(self._stances), 1)
+            features.append(punctuation_frequencies)
+            feature_names.append('punctuation_frequency')
+            self._feature_to_csv(punctuation_frequencies, ['punctuation_frequency'],
+                                 features_directory + '/punctuation_frequency')
 
         return {'feature_matrix': np.concatenate(features, axis=1), 'feature_names': feature_names}
 
@@ -324,6 +332,25 @@ class FeatureGenerator(object):
         for stance in tqdm.tqdm(self._stances):
             lengths.append(len(self._original_articles.get(stance['Body ID'])))
         return lengths
+
+    def _get_punctuation_frequency(self):
+        frequencies = []
+
+        for stance in tqdm.tqdm(self._stances):
+            question_marks = 0
+            exclamation_marks = 0
+            article_body = self._original_articles[stance['Body ID']]
+
+            for character in article_body:
+                if character == '?':
+                    question_marks += 1
+                elif character == '!':
+                    exclamation_marks += 1
+
+            frequency = (question_marks + exclamation_marks) / len(article_body.split())
+            frequencies.append(frequency)
+
+        return frequencies
 
     # WIP
     # def _bias_feature(self):
