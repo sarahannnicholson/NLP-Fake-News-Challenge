@@ -6,6 +6,7 @@ from sklearn.model_selection import StratifiedKFold
 
 from feature_generation import FeatureGenerator
 from FeatureData import FeatureData
+import scorer
 
 
 class Model(object):
@@ -104,9 +105,9 @@ def stratify(X, y):
     num_disagree = disagree_indices.shape[0]
 
     # Take the first num_disagrees entries for each class
-    reduced_agree_indices = agree_indices[:num_disagree]
-    reduced_discuss_indices = discuss_indices[:num_disagree]
-    reduced_unrelated_indices = unrelated_indices[:num_disagree]
+    reduced_agree_indices = agree_indices[:len(agree_indices)]
+    reduced_discuss_indices = discuss_indices[:len(discuss_indices)]
+    reduced_unrelated_indices = unrelated_indices[:(num_disagree + len(agree_indices) + len(discuss_indices))]
 
     # Recombine into stratified X and y matrices
     X_stratified = np.concatenate([X[disagree_indices], X[reduced_agree_indices], X[reduced_discuss_indices],
@@ -139,28 +140,34 @@ def convert_stance_to_related(y):
             y[i] = 4
     return y
 
+def map_stances(y):
+    stance_map = {0: 'unrelated', 1: 'discuss', 2: 'agree', 3: 'disagree'}
+    return [stance_map.get(key) for key in y]
+
 if __name__ == '__main__':
     features_for_X1 = [
-        # 'refuting',
+         'refuting',
         'ngrams',
-        # 'polarity',
+         'polarity',
         'named',
-        # 'vader',
+         'vader',
         'jaccard',
         'quote_analysis',
         'lengths',
-        'punctuation_frequency'
+        'punctuation_frequency',
+        'word2Vec'
     ]
     features_for_X2 = [
-        #'refuting',
-        #'ngrams',
+        'refuting',
+        'ngrams',
         'polarity',
         'named',
         'vader',
         'jaccard',
         'quote_analysis',
         'lengths',
-        'punctuation_frequency'
+        'punctuation_frequency',
+        'word2Vec'
     ]
     # SVM Model
     model1 = Model('svm', features_for_X1)
@@ -237,8 +244,12 @@ if __name__ == '__main__':
         recall_scores.append(recal(y_test, y_predicted, model1._stance_map))
         accuracy_scores.append(accuracy(y_test, y_predicted, model1._stance_map))
 
+        y_test= map_stances(y_test)
+        y_predicted = map_stances(y_predicted)
+        scorer.report_score(y_test, y_predicted)
     print ''
     print 'Kfold precision averages: ' + str(score_average(precision_scores))
     print 'Kfold recall averages: ' + str(score_average(recall_scores))
     print 'Kfold accuracy averages: ' + str(score_average(accuracy_scores))
+
 

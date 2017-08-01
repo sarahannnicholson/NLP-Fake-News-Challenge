@@ -69,7 +69,7 @@ class FeatureGenerator(object):
             word2Vec = np.array(self._get_word2vec()).reshape(len(self._stances), 1)
             features.append(word2Vec)
             feature_names.append("word2Vec")
-            self._feature_to_csv(word2Vec, ["word2Vec"], features_directory + '/ngrams.csv')
+            self._feature_to_csv(word2Vec, ["word2Vec"], features_directory + '/word2Vec.csv')
 
         if False:
             print 'Retrieving refuting words...'
@@ -121,7 +121,7 @@ class FeatureGenerator(object):
             feature_names.append('lengths')
             self._feature_to_csv(lengths, ['lengths'], features_directory + '/lengths.csv')
 
-        if True:
+        if False:
             logging.debug('Retrieving punctuation frequencies...')
             punctuation_frequencies = np.array(self._get_punctuation_frequency()).reshape(len(self._stances), 1)
             features.append(punctuation_frequencies)
