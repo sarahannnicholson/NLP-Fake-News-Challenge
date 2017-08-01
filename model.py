@@ -1,4 +1,6 @@
 import numpy as np
+from joblib import Parallel, delayed
+from datetime import datetime
 from sklearn import svm, preprocessing
 from sklearn.neural_network import MLPClassifier
 from sklearn.neural_network import MLPRegressor
@@ -7,7 +9,6 @@ from sklearn.model_selection import StratifiedKFold
 from feature_generation import FeatureGenerator
 from FeatureData import FeatureData
 import scorer
-
 
 class Model(object):
     def __init__(self, modelType, features):
@@ -145,12 +146,13 @@ def map_stances(y):
     return [stance_map.get(key) for key in y]
 
 if __name__ == '__main__':
+    startTime = datetime.now()
     features_for_X1 = [
-         'refuting',
+        'refuting',
         'ngrams',
-         'polarity',
+        'polarity',
         'named',
-         'vader',
+        'vader',
         'jaccard',
         'quote_analysis',
         'lengths',
@@ -169,34 +171,33 @@ if __name__ == '__main__':
         'punctuation_frequency',
         'word2Vec'
     ]
-    # SVM Model
-    model1 = Model('svm', features_for_X1)
-    # NN model
+    # NN Model 1
+    model1 = Model('nn', features_for_X1)
+    # NN model 2
     model2 = Model('nn', features_for_X2)
 
     data = model1.get_data('data/combined_bodies.csv', 'data/combined_stances.csv', 'combined_features')
-    data2 = model2.get_data('data/combined_bodies.csv', 'data/combined_stances.csv', 'combined_features')
 
     X1 = data['X']
     y1 = data['y']
     X2 = data['X']
     y2 = data['y']
 
-    stratify_data = True
+    stratify_data = False
     if stratify_data:
         stratified = stratify(X1, y1)
-        stratified2 = stratify(X2, y2)
         X1 = stratified['X']
         y1 = stratified['y']
-        X2 = stratified2['X']
-        y2 = stratified2['y']
+        X2 = stratified['X']
+        y2 = stratified['y']
 
-    ##
     precision_scores = []
     recall_scores = []
     accuracy_scores = []
+    competition_scores = []
 
     kfold = StratifiedKFold(n_splits=10)
+    
     for train_indices, test_indices in kfold.split(X1, y1):
         X1_train = X1[train_indices]
         y1_train = y1[train_indices]
@@ -216,11 +217,11 @@ if __name__ == '__main__':
         X_test = X1[test_indices]
         y_test = y1[test_indices]
 
-        # phase 1: SVM classifier for unrelated/related classification
+        # phase 1: Neural Net Classifier for unrelated/related classification
         # phase 2: Neural Net Classifier for agree, disagree, discuss
-        SVM_classifier = model1.get_trained_classifier(X1_train, convert_stance_to_related(y1_train))
-        NN_classifier = model2.get_trained_classifier(X2_train, y2_train)
-        y_predicted = model1.test_classifier(SVM_classifier, X_test)
+        NN_clf1 = model1.get_trained_classifier(X1_train, convert_stance_to_related(y1_train))
+        NN_clf2 = model2.get_trained_classifier(X2_train, y2_train)
+        y_predicted = model1.test_classifier(NN_clf1, X_test)
 
         mask = np.ones(len(y_predicted), dtype=bool)
         related_rows = []
@@ -228,9 +229,9 @@ if __name__ == '__main__':
             if stance == 0:
                 related_rows.append(i)
         mask[related_rows] = False
-
+        
         X2_test = X_test[mask]
-        y2_predicted = model2.test_classifier(NN_classifier, X2_test)
+        y2_predicted = model2.test_classifier(NN_clf2, X2_test)
 
         # add agree, disagree, discuss results back into y_predicted
         current_index = 0
@@ -239,17 +240,18 @@ if __name__ == '__main__':
                 y_predicted[i] = y2_predicted[current_index]
                 current_index += 1
 
-
         precision_scores.append(precision(y_test, y_predicted, model1._stance_map))
         recall_scores.append(recal(y_test, y_predicted, model1._stance_map))
         accuracy_scores.append(accuracy(y_test, y_predicted, model1._stance_map))
 
         y_test= map_stances(y_test)
         y_predicted = map_stances(y_predicted)
-        scorer.report_score(y_test, y_predicted)
-    print ''
-    print 'Kfold precision averages: ' + str(score_average(precision_scores))
-    print 'Kfold recall averages: ' + str(score_average(recall_scores))
-    print 'Kfold accuracy averages: ' + str(score_average(accuracy_scores))
+        competition_score = scorer.report_score(y_test, y_predicted)
+        competition_scores.append(competition_score)
 
+    print '\nKfold precision averages: ', score_average(precision_scores)
+    print 'Kfold recall averages: ', score_average(recall_scores)
+    print 'Kfold accuracy averages: ', score_average(accuracy_scores)
+    print 'competition score averages: ', sum(competition_scores) / len(competition_scores)
 
+    print "time to run: ", datetime.now() - startTime
