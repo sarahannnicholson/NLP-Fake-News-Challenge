@@ -324,7 +324,7 @@ if __name__ == '__main__':
         #'refuting',
         #'ngrams',
         #'polarity',
-        'named',
+        #'named',
         #'vader',
         #'jaccard',
         'quote_analysis',
