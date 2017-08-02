@@ -4,6 +4,7 @@ import logging
 import os, re, string, tqdm, nltk
 
 import numpy as np
+from os.path import basename
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from gensim import models
 from gensim.models.phrases import Phraser
@@ -31,23 +32,27 @@ class FeatureGenerator(object):
         self._max_ngram_size = 3
         self._refuting_words = ['fake', 'fraud', 'hoax', 'false', 'deny', 'denies', 'not', 'despite', 'nope', 'doubt',
                                 'doubts', 'bogus', 'debunk', 'pranks', 'retract']
-
     @staticmethod
     def get_features_from_file(features_directory, use=[]):
         """Returns the full set of features as a 2d numpy array by concatenating all of the feature csv files located
         under the features directory."""
         features = []
+        feature_names = []
         for feature_csv in os.listdir(features_directory):
             if np.count_nonzero([feature_csv.startswith(x) for x in use]):
                 with open(os.path.join(features_directory, feature_csv)) as f:
+                    print f.name
                     content = np.loadtxt(fname=f, comments='', delimiter=',', skiprows=1)
 
                     if len(content.shape) == 1:
                         content = content.reshape(content.shape[0], 1)
-
+                    i = 0
+                    for col in content.T:
+                        feature_names.append(basename(f.name) + str(i))
+                        i+=1
                     features.append(content)
 
-        return np.concatenate(features, axis=1)
+        return np.concatenate(features, axis=1), feature_names
 
     def get_features(self, features_directory="features"):
         """Retrieves the full set of features as a matrix (the X matrix for training). You only need to run this
@@ -56,7 +61,7 @@ class FeatureGenerator(object):
         feature_names = []
         features = []
 
-        if False:
+        if True:
             print 'Retrieving headline ngrams...'
             ngrams = np.array(self._get_ngrams())
             features.append(ngrams)
@@ -71,14 +76,14 @@ class FeatureGenerator(object):
             feature_names.append("word2Vec")
             self._feature_to_csv(word2Vec, ["word2Vec"], features_directory + '/word2Vec.csv')
 
-        if False:
+        if True:
             print 'Retrieving refuting words...'
             refuting = np.array(self._get_refuting_words())
             features.append(refuting)
             [feature_names.append(word + '_refuting') for word in self._refuting_words]
             self._feature_to_csv(refuting, self._refuting_words, features_directory+'/refuting.csv')
 
-        if False:
+        if True:
             print 'Retrieving polarity...'
             polarity = np.array(self._polarity_feature())
             features.append(polarity)
@@ -86,14 +91,14 @@ class FeatureGenerator(object):
             feature_names.append('article_polarity')
             self._feature_to_csv(polarity, ['headline_polarity', 'article_polarity'], features_directory+'/polarity.csv')
 
-        if False:
+        if True:
             print 'Retrieving named entity cosine...'
             named_cosine = np.array(self._named_entity_feature()).reshape(len(self._stances), 1)
             features.append(named_cosine)
             feature_names.append('named_cosine')
             self._feature_to_csv(named_cosine, ['named_cosine'], features_directory+'/named_cosine.csv')
 
-        if False:
+        if True:
             print 'Retrieving VADER...'
             vader = np.array(self._vader_feature()).reshape(len(self._stances), 2)
             features.append(vader)
@@ -101,27 +106,27 @@ class FeatureGenerator(object):
             feature_names.append('vader_neg')
             self._feature_to_csv(vader, ['vader'], features_directory+'/vader.csv')
 
-        if False:
+        if True:
             print 'Retrieving jaccard similarities...'
             jaccard = np.array(self._get_jaccard_similarity()).reshape(len(self._stances), 1)
             features.append(jaccard)
             feature_names.append('jaccard_similarity')
             self._feature_to_csv(jaccard, ['jaccard_similarity'], features_directory+'/jaccard_similarity.csv')
 
-        if False:
+        if True:
             print 'Retrieving quote analysis...'
             quotes = np.array(self._get_quotes()).reshape(len(self._stances), 1)
             features.append(quotes)
             feature_names.append('quote_analysis')
             self._feature_to_csv(quotes, ['quote_analysis'], features_directory+'/quote_analysis.csv')
 
-        if False:
+        if True:
             lengths = np.array(self._length_feature()).reshape(len(self._stances), 1)
             features.append(lengths)
             feature_names.append('lengths')
             self._feature_to_csv(lengths, ['lengths'], features_directory + '/lengths.csv')
 
-        if False:
+        if True:
             logging.debug('Retrieving punctuation frequencies...')
             punctuation_frequencies = np.array(self._get_punctuation_frequency()).reshape(len(self._stances), 1)
             features.append(punctuation_frequencies)
@@ -187,7 +192,7 @@ class FeatureGenerator(object):
             standardized_counts = [1.0*count/len(stance['Headline'].split()) for count in aggregated_counts]
 
             ngrams.append(standardized_counts)
-            print ngrams
+            #print ngrams
 
         return ngrams
 
