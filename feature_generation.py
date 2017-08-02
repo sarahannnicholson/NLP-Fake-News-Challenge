@@ -41,12 +41,11 @@ class FeatureGenerator(object):
         for feature_csv in os.listdir(features_directory):
             if np.count_nonzero([feature_csv.startswith(x) for x in use]):
                 with open(os.path.join(features_directory, feature_csv)) as f:
-                    print f.name
                     content = np.loadtxt(fname=f, comments='', delimiter=',', skiprows=1)
 
                     if len(content.shape) == 1:
                         content = content.reshape(content.shape[0], 1)
-                    i = 0
+                        i=0
                     for col in content.T:
                         feature_names.append(basename(f.name) + str(i))
                         i+=1

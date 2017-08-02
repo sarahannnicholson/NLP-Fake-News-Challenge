@@ -23,6 +23,7 @@ class Model(object):
         X_train, self._feature_col_names = FeatureGenerator.get_features_from_file(use=self._features_for_X1,
                                                         features_directory=features_directory)
 
+        print "X_train shape:", X_train.shape
         y_train = np.asarray([self._stance_map[stance['Stance']] for stance in feature_data.stances])
         print "col names", self._feature_col_names
         # Scale features to range[0, 1] to prevent larger features from dominating smaller ones
@@ -141,7 +142,7 @@ def score_average(scores):
 def convert_stance_to_related(y):
     for stance, i in enumerate(y):
         if stance != 0:
-            y[i] = 4
+            y[i] = 1
     return y
 
 def plot_coefficients(classifier, feature_names, i, k):
@@ -191,8 +192,8 @@ if __name__ == '__main__':
         'word2Vec'
     ]
 
-    model1 = Model('svm', features_for_X1)
-    model2 = Model('svm', features_for_X2)
+    model1 = Model('nn', features_for_X1)
+    model2 = Model('nn', features_for_X2)
 
     data = model1.get_data('data/combined_bodies.csv', 'data/combined_stances.csv', 'combined_features')
     data2 = model2.get_data('data/combined_bodies.csv', 'data/combined_stances.csv', 'combined_features')
@@ -220,53 +221,55 @@ if __name__ == '__main__':
 
     for train_indices, test_indices in kfold.split(X1, y1):
         X1_train = X1[train_indices]
-        y1_train = y1[train_indices]
+        y1_train = [int(s != 0) for s in y1[train_indices]]
         X2_train = X2[train_indices]
         y2_train = y2[train_indices]
 
+        #Save testing data
+        X1_test = X1[test_indices]
+        X2_test = X2[test_indices]
+        y_test = y2[test_indices]
+
         # remove rows of the unrelated class for X2_train and y2_train
-        mask = np.ones(len(X1_train), dtype=bool)
-        unrelated_rows = []
-        for i, stance in enumerate(y1_train):
-            if stance == 0:
-                unrelated_rows.append(i)
-        mask[unrelated_rows] = False
-
-        X2_train = X2_train[mask]
-        y2_train = y2_train[mask]
-        X_test = X1[test_indices]
-        y_test = y1[test_indices]
-
-        print X2_train.shape, X_test.shape
+        X2_train_filtered = X2_train[np.nonzero(y1_train)]
+        y2_train_filtered = y2_train[np.nonzero(y1_train)]
 
         # phase 1: Neural Net Classifier for unrelated/related classification
-
-        NN_clf1 = model1.get_trained_classifier(X1_train, convert_stance_to_related(y1_train))
-        print model1._feature_col_names, model2._feature_col_names
-        plot_coefficients(NN_clf1, model1._feature_col_names, 1, k)
+        print "#1 Train"
+        print np.bincount(y1_train)
+        print np.unique(y1_train)
+        NN_clf1 = model1.get_trained_classifier(X1_train, y1_train)
+        #plot_coefficients(NN_clf1, model1._feature_col_names, 1, k)
 
         # phase 2: Neural Net Classifier for agree, disagree, discuss
-        NN_clf2 = model2.get_trained_classifier(X2_train, y2_train)
-        print model2._feature_col_names
-        plot_coefficients(NN_clf2, model2._feature_col_names, 2, k)
-        y_predicted = model1.test_classifier(NN_clf1, X_test)
+        print "#2 Train"
+        print np.bincount(y2_train_filtered)
+        print np.unique(y2_train_filtered)
+        NN_clf2 = model2.get_trained_classifier(X2_train_filtered, y2_train_filtered)
+        #plot_coefficients(NN_clf2, model2._feature_col_names, 2, k)
+       
+        y_predicted = model1.test_classifier(NN_clf1, X1_test)
+        print "#1 Test"
+        print np.bincount(y_predicted)
+        print np.unique(y_predicted)
 
-        mask = np.ones(len(y_predicted), dtype=bool)
-        related_rows = []
-        for i, stance in enumerate(y_predicted):
-            if stance == 0:
-                related_rows.append(i)
-        mask[related_rows] = False
-
-        X2_test = X_test[mask]
         y2_predicted = model2.test_classifier(NN_clf2, X2_test)
+        print "#2 Test"
+        print np.bincount(y2_predicted)
+        print np.unique(y2_predicted)
+
+        print "Actual Test"
+        print np.bincount(y_test)
+        print np.unique(y_test)
 
         # add agree, disagree, discuss results back into y_predicted
-        current_index = 0
         for i, stance in enumerate(y_predicted):
             if stance != 0:
-                y_predicted[i] = y2_predicted[current_index]
-                current_index += 1
+                y_predicted[i] = y2_predicted[i]
+
+        print "Final"
+        print np.bincount(y_predicted)
+        print np.unique(y_predicted)
 
         precision_scores.append(precision(y_test, y_predicted, model1._stance_map))
         recall_scores.append(recall(y_test, y_predicted, model1._stance_map))
