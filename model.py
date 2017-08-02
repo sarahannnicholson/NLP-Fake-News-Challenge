@@ -23,9 +23,8 @@ class Model(object):
         X_train, self._feature_col_names = FeatureGenerator.get_features_from_file(use=self._features_for_X1,
                                                         features_directory=features_directory)
 
-        print "X_train shape:", X_train.shape
         y_train = np.asarray([self._stance_map[stance['Stance']] for stance in feature_data.stances])
-        print "col names", self._feature_col_names
+
         # Scale features to range[0, 1] to prevent larger features from dominating smaller ones
         min_max_scaler = preprocessing.MinMaxScaler()
         X_train = min_max_scaler.fit_transform(X_train)
@@ -39,7 +38,7 @@ class Model(object):
         """Trains the model and returns the trained classifier to be used for prediction on test data. Note
         that stances in test data will need to be translated to the numbers shown in self._stance_map."""
         if self._model_type == 'svm':
-            classifier = svm.SVC(kernel='linear')
+            classifier = svm.SVC(decision_function_shape='ovr', cache_size=1000)
         elif self._model_type == 'nn':
             classifier = MLPClassifier(solver='lbfgs', alpha=1e-5, hidden_layer_sizes=(30,), random_state=1)
 
@@ -122,7 +121,7 @@ def stratify(X, y):
 
     return {'X': X_stratified, 'y': y_stratified}
 
-def score_average(scores):
+def score_average(scores, model1):
     """ Used to calculate score averages resulting from kfold validation. """
     # Calculate averages for precision, recall, and accuracy
     score_sums = {stance: 0 for stance in model1._stance_map.iterkeys()}
@@ -165,58 +164,34 @@ def map_stances(y):
     stance_map = {0: 'unrelated', 1: 'discuss', 2: 'agree', 3: 'disagree'}
     return [stance_map.get(key) for key in y]
 
-if __name__ == '__main__':
-    startTime = datetime.now()
-    features_for_X1 = [
-        #'refuting',
-        'ngrams',
-        #'polarity',
-        'named',
-        #'vader',
-        'jaccard',
-        'quote_analysis',
-        'lengths',
-        #'punctuation_frequency',
-        'word2Vec'
-    ]
-    features_for_X2 = [
-        'refuting',
-        'ngrams',
-        'polarity',
-        'named',
-        'vader',
-        'jaccard',
-        'quote_analysis',
-        'lengths',
-        'punctuation_frequency',
-        'word2Vec'
-    ]
+def split_data(data1, data2, doStatify):
+    X1 = data1['X']; X2 = data2['X']
+    y1 = data1['y']; y2 = data2['y']
 
-    model1 = Model('nn', features_for_X1)
-    model2 = Model('nn', features_for_X2)
-
-    data = model1.get_data('data/combined_bodies.csv', 'data/combined_stances.csv', 'combined_features')
-    data2 = model2.get_data('data/combined_bodies.csv', 'data/combined_stances.csv', 'combined_features')
-
-    X1 = data['X']
-    y1 = data['y']
-    X2 = data2['X']
-    y2 = data2['y']
-
-    stratify_data = False
-    if stratify_data:
+    if doStatify:
         stratified = stratify(X1, y1)
         X1 = stratified['X']
         y1 = stratified['y']
         X2 = stratified['X']
         y2 = stratified['y']
 
-    precision_scores = []
-    recall_scores = []
-    accuracy_scores = []
-    competition_scores = []
+    return X1, y1, X2, y2
 
-    kfold = StratifiedKFold(n_splits=10)
+def kfold_system(X1_features, X2_features, doStatify, numFolds, m1_type, m2_type):
+    # init models
+    model1 = Model(m1_type, X1_features)
+    model2 = Model(m2_type, X2_features)
+
+    # Get training and testing data
+    data = model1.get_data('data/combined_bodies.csv', 'data/combined_stances.csv', 'combined_features')
+    data2 = model2.get_data('data/combined_bodies.csv', 'data/combined_stances.csv', 'combined_features')
+
+    X1, y1, X2, y2 = split_data(data, data2, doStatify)
+
+    # For loop parameters
+    kfold = StratifiedKFold(n_splits=numFolds)
+    precision_scores = []; recall_scores = []; 
+    accuracy_scores = []; competition_scores = []
     k=0
 
     for train_indices, test_indices in kfold.split(X1, y1):
@@ -225,51 +200,51 @@ if __name__ == '__main__':
         X2_train = X2[train_indices]
         y2_train = y2[train_indices]
 
-        #Save testing data
+        # Save testing data
         X1_test = X1[test_indices]
         X2_test = X2[test_indices]
-        y_test = y2[test_indices]
+        y_test  = y2[test_indices]
 
         # remove rows of the unrelated class for X2_train and y2_train
         X2_train_filtered = X2_train[np.nonzero(y1_train)]
         y2_train_filtered = y2_train[np.nonzero(y1_train)]
 
         # phase 1: Neural Net Classifier for unrelated/related classification
-        print "#1 Train"
-        print np.bincount(y1_train)
-        print np.unique(y1_train)
+        # print "#1 Train"
+        # print np.bincount(y1_train)
+        # print np.unique(y1_train)
         NN_clf1 = model1.get_trained_classifier(X1_train, y1_train)
         #plot_coefficients(NN_clf1, model1._feature_col_names, 1, k)
 
         # phase 2: Neural Net Classifier for agree, disagree, discuss
-        print "#2 Train"
-        print np.bincount(y2_train_filtered)
-        print np.unique(y2_train_filtered)
+        # print "#2 Train"
+        # print np.bincount(y2_train_filtered)
+        # print np.unique(y2_train_filtered)
         NN_clf2 = model2.get_trained_classifier(X2_train_filtered, y2_train_filtered)
         #plot_coefficients(NN_clf2, model2._feature_col_names, 2, k)
        
         y_predicted = model1.test_classifier(NN_clf1, X1_test)
-        print "#1 Test"
-        print np.bincount(y_predicted)
-        print np.unique(y_predicted)
+        # print "#1 Test"
+        # print np.bincount(y_predicted)
+        # print np.unique(y_predicted)
 
         y2_predicted = model2.test_classifier(NN_clf2, X2_test)
-        print "#2 Test"
-        print np.bincount(y2_predicted)
-        print np.unique(y2_predicted)
+        # print "#2 Test"
+        # print np.bincount(y2_predicted)
+        # print np.unique(y2_predicted)
 
-        print "Actual Test"
-        print np.bincount(y_test)
-        print np.unique(y_test)
+        # print "Actual Test"
+        # print np.bincount(y_test)
+        # print np.unique(y_test)
 
         # add agree, disagree, discuss results back into y_predicted
         for i, stance in enumerate(y_predicted):
             if stance != 0:
                 y_predicted[i] = y2_predicted[i]
 
-        print "Final"
-        print np.bincount(y_predicted)
-        print np.unique(y_predicted)
+        # print "Final"
+        # print np.bincount(y_predicted)
+        # print np.unique(y_predicted)
 
         precision_scores.append(precision(y_test, y_predicted, model1._stance_map))
         recall_scores.append(recall(y_test, y_predicted, model1._stance_map))
@@ -281,9 +256,92 @@ if __name__ == '__main__':
         competition_scores.append(competition_score)
         k+=1
 
-    print '\nKfold precision averages: ', score_average(precision_scores)
-    print 'Kfold recall averages: ', score_average(recall_scores)
-    print 'Kfold accuracy averages: ', score_average(accuracy_scores)
+    print '\nKfold precision averages: ', score_average(precision_scores, model1)
+    print 'Kfold recall averages: ', score_average(recall_scores, model1)
+    print 'Kfold accuracy averages: ', score_average(accuracy_scores, model1)
     print 'competition score averages: ', sum(competition_scores) / len(competition_scores)
 
-    print "time to run: ", datetime.now() - startTime
+
+def competition_system(X1_features, X2_features, doStatify, m1_type, m2_type):
+    # Init models
+    model1 = Model(m1_type, X1_features)
+    model2 = Model(m2_type, X2_features)
+
+    # Get testing and trainig data
+    train1 = model1.get_data('data/train_bodies.csv', 'data/train_stances.csv', 'features')
+    test1  = model1.get_data('data/competition_test_bodies.csv', 'data/competition_test_stances.csv', 'test_features')
+
+    train2 = model2.get_data('data/train_bodies.csv', 'data/train_stances.csv', 'features')
+    test2  = model2.get_data('data/competition_test_bodies.csv', 'data/competition_test_stances.csv', 'test_features')
+
+    X1_train, y1_train, X1_test, y1_test = split_data(train1, test1, doStatify)
+    X2_train, y2_train, X2_test, y_test = split_data(train2, test2, doStatify)
+
+    # remove rows of the unrelated class for X2_train and y2_train
+    X2_train_filtered = X2_train[np.nonzero(y1_train)]
+    y2_train_filtered = y2_train[np.nonzero(y1_train)]
+
+    # Train Models
+    NN_clf1 = model1.get_trained_classifier(X1_train, y1_train)
+    NN_clf2 = model2.get_trained_classifier(X2_train_filtered, y2_train_filtered)
+
+    # Get model predictions
+    y_predicted  = model1.test_classifier(NN_clf1, X1_test)
+    y2_predicted = model2.test_classifier(NN_clf2, X2_test)
+    
+    # add agree, disagree, discuss results back into y_predicted
+    for i, stance in enumerate(y_predicted):
+        if stance != 0:
+            y_predicted[i] = y2_predicted[i]
+
+    precision(y_test, y_predicted, model1._stance_map)
+    recall(y_test, y_predicted, model1._stance_map)
+    accuracy(y_test, y_predicted, model1._stance_map)
+
+    y_test= map_stances(y_test)
+    y_predicted = map_stances(y_predicted)
+    competition_score = scorer.report_score(y_test, y_predicted)
+
+
+if __name__ == '__main__':
+
+    # ===============================
+    #    System config parameters    
+    # ===============================
+    X1_features = [
+        #'refuting',
+        'ngrams',
+        #'polarity',
+        'named',
+        #'vader',
+        'jaccard',
+        'quote_analysis',
+        'lengths',
+        #'punctuation_frequency',
+        'word2Vec'
+    ]
+    X2_features = [
+        #'refuting',
+        #'ngrams',
+        #'polarity',
+        'named',
+        #'vader',
+        #'jaccard',
+        'quote_analysis',
+        'lengths',
+        'punctuation_frequency',
+        #'word2Vec'
+    ]
+
+    model1_type = 'nn'
+    model2_type = 'nn'
+    doStatify = False
+    doKfold = False
+    numFolds = 10
+
+    if doKfold:
+        # Train and test using kfold validation
+        kfold_system(X1_features, X2_features, doStatify, numFolds, model1_type, model2_type)
+    else:
+        # Train and test designed by the FNC
+        competition_system(X1_features, X2_features, doStatify, model1_type, model2_type)
