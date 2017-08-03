@@ -38,7 +38,7 @@ class Model(object):
         """Trains the model and returns the trained classifier to be used for prediction on test data. Note
         that stances in test data will need to be translated to the numbers shown in self._stance_map."""
         if self._model_type == 'svm':
-            classifier = svm.SVC(kernel="linear")
+            classifier = svm.SVC(decision_function_shape='ovr', cache_size=1000)
         elif self._model_type == 'nn':
             classifier = MLPClassifier(solver='lbfgs', alpha=1e-5, hidden_layer_sizes=(30,), random_state=1)
 
