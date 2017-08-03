@@ -38,7 +38,7 @@ class Model(object):
         """Trains the model and returns the trained classifier to be used for prediction on test data. Note
         that stances in test data will need to be translated to the numbers shown in self._stance_map."""
         if self._model_type == 'svm':
-            classifier = svm.SVC(decision_function_shape='ovr', cache_size=1000)
+            classifier = svm.SVC(kernel="linear")
         elif self._model_type == 'nn':
             classifier = MLPClassifier(solver='lbfgs', alpha=1e-5, hidden_layer_sizes=(30,), random_state=1)
 
@@ -145,30 +145,30 @@ def convert_stance_to_related(y):
     return y
 
 def plot_coefficients(classifier, feature_names, i, k):
-     top_features=len(feature_names)/2
-     coef = classifier.coef_[0]
+    top_features=len(feature_names)/2
+    coef = classifier.coef_[0]
 
-     top_positive_coefficients = np.argsort(coef)[-top_features:]
-     top_negative_coefficients = np.argsort(coef)[:top_features]
-     top_coefficients = np.hstack([top_negative_coefficients, top_positive_coefficients])
+    top_positive_coefficients = np.argsort(coef)[-top_features:]
+    top_negative_coefficients = np.argsort(coef)[:top_features]
+    top_coefficients = np.hstack([top_negative_coefficients, top_positive_coefficients])
 
-     # create plot
-     plt.figure(figsize=(30, 15))
-     colors = ['#cccccc' if c < 0 else 'teal' for c in coef[top_coefficients]]
-     plt.bar(np.arange(2 * top_features), coef[top_coefficients], color=colors)
-     feature_names = np.array(feature_names)
-     plt.xticks(np.arange(1, 1 + 2 * top_features), feature_names[top_coefficients], rotation='vertical', ha='right')
-     plt.savefig("graphs/plot-NN_model" + str(i) + "_kfold" + str(k) + ".png")
+    # create plot
+    plt.figure(figsize=(30, 20))
+    colors = ['#cccccc' if c < 0 else 'teal' for c in coef[top_coefficients]]
+    plt.bar(np.arange(2 * top_features), coef[top_coefficients], color=colors)
+    feature_names = np.array(feature_names)
+    plt.xticks(np.arange(0, 1 + 2 * top_features), feature_names[top_coefficients], rotation='70')
+    plt.savefig("graphs/plot-NN_model" + str(i) + "_kfold" + str(k) + ".png")
 
 def map_stances(y):
     stance_map = {0: 'unrelated', 1: 'discuss', 2: 'agree', 3: 'disagree'}
     return [stance_map.get(key) for key in y]
 
-def split_data(data1, data2, doStatify):
+def split_data(data1, data2, doStratify):
     X1 = data1['X']; X2 = data2['X']
     y1 = data1['y']; y2 = data2['y']
 
-    if doStatify:
+    if doStratify:
         stratified = stratify(X1, y1)
         X1 = stratified['X']
         y1 = stratified['y']
@@ -177,7 +177,7 @@ def split_data(data1, data2, doStatify):
 
     return X1, y1, X2, y2
 
-def kfold_system(X1_features, X2_features, doStatify, numFolds, m1_type, m2_type):
+def kfold_system(X1_features, X2_features, doStratify, numFolds, m1_type, m2_type):
     # init models
     model1 = Model(m1_type, X1_features)
     model2 = Model(m2_type, X2_features)
@@ -186,7 +186,7 @@ def kfold_system(X1_features, X2_features, doStatify, numFolds, m1_type, m2_type
     data = model1.get_data('data/combined_bodies.csv', 'data/combined_stances.csv', 'combined_features')
     data2 = model2.get_data('data/combined_bodies.csv', 'data/combined_stances.csv', 'combined_features')
 
-    X1, y1, X2, y2 = split_data(data, data2, doStatify)
+    X1, y1, X2, y2 = split_data(data, data2, doStratify)
 
     # For loop parameters
     kfold = StratifiedKFold(n_splits=numFolds)
@@ -213,22 +213,20 @@ def kfold_system(X1_features, X2_features, doStatify, numFolds, m1_type, m2_type
         # print "#1 Train"
         # print np.bincount(y1_train)
         # print np.unique(y1_train)
-        NN_clf1 = model1.get_trained_classifier(X1_train, y1_train)
-        #plot_coefficients(NN_clf1, model1._feature_col_names, 1, k)
+        clf1 = model1.get_trained_classifier(X1_train, y1_train)
 
         # phase 2: Neural Net Classifier for agree, disagree, discuss
         # print "#2 Train"
         # print np.bincount(y2_train_filtered)
         # print np.unique(y2_train_filtered)
-        NN_clf2 = model2.get_trained_classifier(X2_train_filtered, y2_train_filtered)
-        #plot_coefficients(NN_clf2, model2._feature_col_names, 2, k)
+        clf2 = model2.get_trained_classifier(X2_train_filtered, y2_train_filtered)
        
-        y_predicted = model1.test_classifier(NN_clf1, X1_test)
+        y_predicted = model1.test_classifier(clf1, X1_test)
         # print "#1 Test"
         # print np.bincount(y_predicted)
         # print np.unique(y_predicted)
 
-        y2_predicted = model2.test_classifier(NN_clf2, X2_test)
+        y2_predicted = model2.test_classifier(clf2, X2_test)
         # print "#2 Test"
         # print np.bincount(y2_predicted)
         # print np.unique(y2_predicted)
@@ -262,7 +260,7 @@ def kfold_system(X1_features, X2_features, doStatify, numFolds, m1_type, m2_type
     print 'competition score averages: ', sum(competition_scores) / len(competition_scores)
 
 
-def competition_system(X1_features, X2_features, doStatify, m1_type, m2_type):
+def competition_system(X1_features, X2_features, doStratify, m1_type, m2_type):
     # Init models
     model1 = Model(m1_type, X1_features)
     model2 = Model(m2_type, X2_features)
@@ -274,21 +272,30 @@ def competition_system(X1_features, X2_features, doStatify, m1_type, m2_type):
     train2 = model2.get_data('data/train_bodies.csv', 'data/train_stances.csv', 'features')
     test2  = model2.get_data('data/competition_test_bodies.csv', 'data/competition_test_stances.csv', 'test_features')
 
-    X1_train, y1_train, X1_test, y1_test = split_data(train1, test1, doStatify)
-    X2_train, y2_train, X2_test, y_test = split_data(train2, test2, doStatify)
+    X1_train, y1_train, X1_test, y1_test = split_data(train1, test1, doStratify)
+    X2_train, y2_train, X2_test, y_test = split_data(train2, test2, doStratify)
+
+    y1_train = [int(s != 0) for s in y1_train]
 
     # remove rows of the unrelated class for X2_train and y2_train
     X2_train_filtered = X2_train[np.nonzero(y1_train)]
     y2_train_filtered = y2_train[np.nonzero(y1_train)]
 
     # Train Models
-    NN_clf1 = model1.get_trained_classifier(X1_train, y1_train)
-    NN_clf2 = model2.get_trained_classifier(X2_train_filtered, y2_train_filtered)
+    clf1 = model1.get_trained_classifier(X1_train, y1_train)
+    #plot_coefficients(clf1, model1._feature_col_names, 1, 1)
+
+    clf2 = model2.get_trained_classifier(X2_train_filtered, y2_train_filtered)
 
     # Get model predictions
-    y_predicted  = model1.test_classifier(NN_clf1, X1_test)
-    y2_predicted = model2.test_classifier(NN_clf2, X2_test)
-    
+    y_predicted  = model1.test_classifier(clf1, X1_test)
+    y2_predicted = model2.test_classifier(clf2, X2_test)
+
+    tmp_test = map_stances([int(s != 0) for s in y_test])
+    tmp_predicted = map_stances(y_predicted)
+    tmp_competition_score = scorer.report_score(tmp_test, tmp_predicted)
+
+
     # add agree, disagree, discuss results back into y_predicted
     for i, stance in enumerate(y_predicted):
         if stance != 0:
@@ -308,40 +315,41 @@ if __name__ == '__main__':
     # ===============================
     #    System config parameters    
     # ===============================
-    X1_features = [
-        #'refuting',
-        'ngrams',
-        #'polarity',
-        'named',
-        #'vader',
-        'jaccard',
-        'quote_analysis',
-        'lengths',
-        #'punctuation_frequency',
-        'word2Vec'
-    ]
-    X2_features = [
-        #'refuting',
-        #'ngrams',
-        #'polarity',
-        #'named',
-        #'vader',
-        #'jaccard',
-        'quote_analysis',
-        'lengths',
-        'punctuation_frequency',
-        #'word2Vec'
-    ]
+    X1_features = {
+        #'refuting': [0,2,3,8,12,13],
+        'ngrams': [0, 1, 2],
+        #'polarity': [0],
+        'named': [],
+        #'vader': [0,1],
+        'jaccard': [],
+        'quote_analysis': [],
+        'lengths': [],
+        'punctuation_frequency': [],
+        'word2Vec': []
+    }
+
+    X2_features = {
+        'refuting': [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14],
+        'ngrams': [0, 1, 2],
+        'polarity': [0,1],
+        'named': [],
+        #'vader': [0,1],
+        'jaccard': [],
+        'quote_analysis': [],
+        'lengths': [],
+        'punctuation_frequency': [],
+        'word2Vec': []
+    }
 
     model1_type = 'nn'
     model2_type = 'nn'
-    doStatify = False
+    doStratify = False
     doKfold = False
     numFolds = 10
 
     if doKfold:
         # Train and test using kfold validation
-        kfold_system(X1_features, X2_features, doStatify, numFolds, model1_type, model2_type)
+        kfold_system(X1_features, X2_features, doStratify, numFolds, model1_type, model2_type)
     else:
         # Train and test designed by the FNC
-        competition_system(X1_features, X2_features, doStatify, model1_type, model2_type)
+        competition_system(X1_features, X2_features, doStratify, model1_type, model2_type)

@@ -39,19 +39,25 @@ class FeatureGenerator(object):
         features = []
         feature_names = []
         for feature_csv in os.listdir(features_directory):
-            if np.count_nonzero([feature_csv.startswith(x) for x in use]):
-                with open(os.path.join(features_directory, feature_csv)) as f:
-                    content = np.loadtxt(fname=f, comments='', delimiter=',', skiprows=1)
-
-                    if len(content.shape) == 1:
-                        content = content.reshape(content.shape[0], 1)
+            for feature in use:
+                if np.count_nonzero([feature_csv.startswith(feature)]):
+                    with open(os.path.join(features_directory, feature_csv)) as f:
+                        content = np.loadtxt(fname=f, comments='', delimiter=',', skiprows=1)
+                        del_indices = []
                         i=0
-                    for col in content.T:
-                        feature_names.append(basename(f.name) + str(i))
-                        i+=1
-                    features.append(content)
-
-        return np.concatenate(features, axis=1), feature_names
+                        if len(content.shape) == 1:
+                            content = content.reshape(content.shape[0], 1)
+                            feature_names.append(basename(feature) + str(0))
+                        else:
+                            for i in range(len(content)):
+                                if i in use[feature]:
+                                    feature_names.append(basename(feature) + str(i))
+                                else:
+                                    del_indices.append(i)
+                            content = np.delete(content, del_indices, 1)
+                        features.append(content)
+        test = np.concatenate(features, axis=1)
+        return test, feature_names
 
     def get_features(self, features_directory="features"):
         """Retrieves the full set of features as a matrix (the X matrix for training). You only need to run this
