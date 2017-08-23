@@ -21,6 +21,7 @@ To train and get analysis <br />
 `python model.py`
 
 # Sources
+This project was inspired by the Fake News Challenge (FNC)
 [FNC baseline repo](https://github.com/FakeNewsChallenge/fnc-1-baseline) <br />
 [FakeChallenge.org](http://fakenewschallenge.org) <br />
 [Fnc-1 repo](https://github.com/FakeNewsChallenge/fnc-1)
